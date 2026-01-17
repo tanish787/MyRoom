@@ -1,0 +1,73 @@
+{
+  "id": "room_living_001",
+  "name": "Modern Living Room",
+  "dimensions": {
+    "length": 180,
+    "width": 144,
+    "height": 96
+  },
+  "theme": "scandinavian-minimalist",
+  "colorPalette": [
+    "white",
+    "light-gray",
+    "natural-wood",
+    "black-accents",
+    "sage-green"
+  ],
+  "existingItems": [
+    {
+      "id": "item_001",
+      "productId": "prod_003",
+      "name": "Curved Velvet Loveseat",
+      "category": "seating",
+      "position": {
+        "x": 40,
+        "y": 0,
+        "z": 60
+      },
+      "dimensions": {
+        "width": 62,
+        "depth": 34,
+        "height": 32
+      }
+    },
+    {
+      "id": "item_002",
+      "productId": "prod_005",
+      "name": "Travertine Oval Coffee Table",
+      "category": "tables",
+      "position": {
+        "x": 45,
+        "y": 0,
+        "z": 90
+      },
+      "dimensions": {
+        "width": 48,
+        "depth": 28,
+        "height": 16
+      }
+    }
+  ],
+  "emptyZones": [
+    {
+      "id": "zone_001",
+      "type": "corner",
+      "description": "Empty corner near window with natural light",
+      "position": {
+        "x": 10,
+        "y": 0,
+        "z": 10
+      }
+    },
+    {
+      "id": "zone_002",
+      "type": "wall",
+      "description": "Empty wall space behind loveseat",
+      "position": {
+        "x": 40,
+        "y": 0,
+        "z": 40
+      }
+    }
+  ]
+}

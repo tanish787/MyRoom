@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Room - Sign Up / Login</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .auth-container {
+      width: 100%;
+      max-width: 400px;
+      padding: 20px;
+    }
+
+    .auth-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      padding: 40px;
+    }
+
+    .auth-card h1 {
+      text-align: center;
+      color: #667eea;
+      margin-bottom: 30px;
+      font-size: 32px;
+    }
+
+    .auth-form {
+      display: none;
+    }
+
+    .auth-form.active {
+      display: block;
+    }
+
+    .auth-form h2 {
+      color: #333;
+      margin-bottom: 20px;
+      font-size: 24px;
+    }
+
+    .auth-form input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 15px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+      box-sizing: border-box;
+    }
+
+    .auth-form input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 5px rgba(102, 126, 234, 0.2);
+    }
+
+    .auth-form button {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.3s;
+    }
+
+    .auth-form button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .auth-form p {
+      text-align: center;
+      margin-top: 15px;
+      color: #666;
+      font-size: 14px;
+    }
+
+    .auth-form a {
+      color: #667eea;
+      cursor: pointer;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .auth-form a:hover {
+      text-decoration: underline;
+    }
+
+    .message {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 6px;
+      text-align: center;
+      font-size: 14px;
+      min-height: 20px;
+      color: #d32f2f;
+    }
+
+    .message.success {
+      background-color: #e8f5e9;
+      color: #388e3c;
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card">
+      <h1>My Room</h1>
+
+      <div id="loginForm" class="auth-form active">
+        <h2>Login</h2>
+        <input type="email" id="loginEmail" placeholder="Email" required>
+        <input type="password" id="loginPassword" placeholder="Password" required>
+        <button onclick="handleLogin()">Login</button>
+        <p>Don't have an account? <a onclick="switchForm()">Sign up</a></p>
+      </div>
+
+      <div id="signupForm" class="auth-form">
+        <h2>Create Account</h2>
+        <input type="text" id="fullName" placeholder="Full Name" required>
+        <input type="email" id="signupEmail" placeholder="Email" required>
+        <input type="tel" id="phone" placeholder="Phone Number" required>
+        <input type="password" id="signupPassword" placeholder="Password" required>
+        <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+        <button onclick="handleSignup()">Sign Up</button>
+        <p>Already have an account? <a onclick="switchForm()">Login</a></p>
+      </div>
+
+      <div id="message" class="message"></div>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script>
+    function switchForm() {
+      document.getElementById('loginForm').classList.toggle('active');
+      document.getElementById('signupForm').classList.toggle('active');
+      document.getElementById('message').textContent = '';
+    }
+
+    async function handleLogin() {
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      const messageDiv = document.getElementById('message');
+
+      if (!email || !password) {
+        messageDiv.textContent = 'Please fill in all fields';
+        messageDiv.classList.remove('success');
+        return;
+      }
+
+      const result = await authManager.login(email, password);
+      messageDiv.textContent = result.message;
+      messageDiv.classList.toggle('success', result.success);
+
+      if (result.success) {
+        setTimeout(() => window.location.href = 'index.html', 1500);
+      }
+    }
+
+    async function handleSignup() {
+      const fullName = document.getElementById('fullName').value;
+      const email = document.getElementById('signupEmail').value;
+      const phone = document.getElementById('phone').value;
+      const password = document.getElementById('signupPassword').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      const messageDiv = document.getElementById('message');
+
+      if (!fullName || !email || !phone || !password || !confirmPassword) {
+        messageDiv.textContent = 'Please fill in all fields';
+        messageDiv.classList.remove('success');
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        messageDiv.textContent = 'Passwords do not match';
+        messageDiv.classList.remove('success');
+        return;
+      }
+
+      const result = await authManager.signup(fullName, email, phone, password);
+      messageDiv.textContent = result.message;
+      messageDiv.classList.toggle('success', result.success);
+
+      if (result.success) {
+        setTimeout(() => window.location.href = 'index.html', 1500);
+      }
+    }
+  </script>
+</body>
+</html>

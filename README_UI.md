@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # My Room - Drag & Drop Game
 
 A 3D interactive room game inspired by rooms.xyz, where you can drag and drop objects around a corner room.
@@ -60,3 +61,4 @@ Works in all modern browsers that support:
 - ES6 Modules
 - WebGL
 - Touch events (for mobile support)
+=======

@@ -629,6 +629,501 @@
         #generate-btn:active {
             transform: translateY(0);
         }
+
+        /* Account Button and Modal */
+        .account-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #1a6b1a;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            color: #ffffff;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+            z-index: 200;
+        }
+
+        .account-btn:hover {
+            background: #86f300;
+            transform: scale(1.1);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 3000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        h2 {
+            margin: 0 0 15px 0;
+            color: #1a6b1a;
+            font-size: 22px;
+            text-align: center;
+        }
+
+        .account-section {
+            margin-bottom: 20px;
+        }
+
+        .account-section p {
+            margin: 5px 0;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background: #228B22;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .login-btn:hover {
+            background: #1a6b1a;
+        }
+
+        .user-info {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .user-info p {
+            margin: 5px 0;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            margin: 0 5px;
+            background: #1a6b1a;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .tab-btn:hover {
+            background: #86f300;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        #savedRoomsList,
+        #listedItemsList {
+            margin-top: 10px;
+        }
+
+        /* Checkout Modal */
+        #checkout-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #checkout-modal.active {
+            display: flex;
+        }
+
+        .checkout-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .checkout-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 15px;
+        }
+
+        .checkout-header h2 {
+            margin: 0;
+            color: #1a6b1a;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .seller-info {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .seller-info h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .seller-info p {
+            margin: 5px 0;
+            color: #666;
+        }
+
+        .payment-section {
+            margin-bottom: 20px;
+        }
+
+        .payment-section h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #228B22;
+        }
+
+        .order-summary {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .order-summary h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .order-item:last-child {
+            border-bottom: none;
+        }
+
+        .order-total {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 2px solid #228B22;
+            font-weight: bold;
+            font-size: 18px;
+            color: #1a6b1a;
+        }
+
+        .confirm-btn {
+            width: 100%;
+            padding: 12px;
+            background: #228B22;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .confirm-btn:hover {
+            background: #1a6b1a;
+        }
+
+        .confirm-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        #room-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 240px;
+            color: #ffffff;
+            background: #1a6b1a;
+            /* border: 4px solid #90EE90; */
+            border-radius: 25px;
+            padding: 18px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            z-index: 150;
+        }
+
+        #room-controls h3 {
+            margin: 0 0 12px 0;
+            color: #ffffff;
+            font-size: 16px;
+        }
+
+        .room-colors {
+            margin-bottom: 20px;
+        }
+
+        .room-colors h4 {
+            margin: 0 0 8px 0;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .room-color-pickers {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .room-color-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #ffffff;
+        }
+
+        .room-color-wrapper label {
+            font-size: 12px;
+            color: #ffffff;
+            min-width: 50px;
+        }
+
+        .room-color-picker {
+            width: 60px;
+            height: 35px;
+            /* border: 3px solid #228B22; */
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+            /* box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15); */
+        }
+
+        .room-color-picker:hover {
+            transform: scale(1.1);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+            border-width: 4px;
+        }
+
+        .color-palette {
+            margin-bottom: 15px;
+        }
+
+        .color-palette h4 {
+            margin: 0 0 8px 0;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .color-pickers {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .color-picker-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .color-picker {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #228B22;
+            border-radius: 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .color-picker:hover {
+            transform: scale(1.15);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            border-width: 5px;
+        }
+
+        .color-picker.selected {
+            border-color: #1a6b1a;
+            box-shadow: 0 0 0 4px rgba(34, 139, 34, 0.3);
+        }
+
+        .room-styles {
+            margin-bottom: 15px;
+        }
+
+        .room-styles h4 {
+            margin: 0 0 8px 0;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .style-options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .style-option {
+            padding: 10px;
+            border: 3px solid #228B22;
+            border-radius: 15px;
+            background: #1a6b1a;
+            cursor: pointer;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .style-option:hover {
+            background: #ffffff;
+            border-color: #228B22;
+            color: #000000;
+            transform: scale(1.05);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .style-option.selected {
+            background: #14d414;
+            color: white;
+            border-color: #1a6b1a;
+            border-width: 4px;
+            box-shadow: 0 4px 10px rgba(34, 139, 34, 0.4);
+        }
+
+        #generate-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: 3px solid #5a67d8;
+            border-radius: 20px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3);
+        }
+
+        #generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(102, 126, 234, 0.5);
+            border-width: 4px;
+        }
+
+        #generate-btn:active {
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body>
@@ -694,6 +1189,57 @@
         <button id="generate-btn">Generate Room</button>
     </div>
 
+    <!-- Account Button (top right) -->
+    <button id="accountBtn" class="account-btn">👤</button>
+
+    <!-- Account Modal Popup -->
+    <div id="accountModal" class="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>My Account</h2>
+        
+        <div id="notLoggedIn" class="account-section">
+          <p>Please log in to access your account</p>
+          <button onclick="window.location.href='auth.html'" class="login-btn">Go to Login</button>
+        </div>
+
+        <div id="loggedInContent" class="account-section" style="display:none;">
+          <div class="user-info">
+            <p><strong>Full Name:</strong> <span id="profileFullName"></span></p>
+            <p><strong>Email:</strong> <span id="profileEmail"></span></p>
+            <p><strong>Phone:</strong> <span id="profilePhone"></span></p>
+          </div>
+
+          <div class="tabs">
+            <button class="tab-btn active" onclick="openTab(event, 'savedRooms')">Saved Rooms</button>
+            <button class="tab-btn" onclick="openTab(event, 'listedItems')">Listed Items</button>
+            <button class="tab-btn" onclick="openTab(event, 'uploadItem')">Sell Item</button>
+          </div>
+
+          <div id="savedRooms" class="tab-content active">
+            <h3>Your Saved Rooms</h3>
+            <div id="savedRoomsList"></div>
+          </div>
+
+          <div id="listedItems" class="tab-content">
+            <h3>Your Listed Items</h3>
+            <div id="listedItemsList"></div>
+          </div>
+
+          <div id="uploadItem" class="tab-content">
+            <h3>List an Item for Sale</h3>
+            <input type="text" id="itemName" placeholder="Item Name" required>
+            <input type="number" id="itemPrice" placeholder="Price" required>
+            <textarea id="itemDescription" placeholder="Item Description"></textarea>
+            <input type="file" id="itemImage" accept="image/*" required>
+            <button onclick="handleItemUpload()">Upload Item</button>
+          </div>
+
+          <button onclick="handleLogout()" class="logout-btn">Logout</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Checkout Modal -->
     <div id="checkout-modal">
         <div class="checkout-content">
@@ -740,6 +1286,11 @@
         </div>
     </div>
 
+    <!-- Auth Scripts -->
+    <script src="js/auth.js"></script>
+    <script src="js/account.js"></script>
+
+    <!-- Your existing game scripts -->
     <script type="importmap">
         {
             "imports": {
@@ -749,5 +1300,5 @@
         }
     </script>
     <script type="module" src="game.js"></script>
-</body>
+  </body>
 </html>
