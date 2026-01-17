@@ -1,6 +1,6 @@
 import { RoomData, VoxelObject } from "../types";
 
-const OPENROUTER_API_KEY = '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';
+const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || '';
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 const BASE_RULES = `

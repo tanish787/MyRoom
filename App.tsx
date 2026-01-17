@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  Box, 
-  RefreshCw, 
-  X, 
-  ImageIcon, 
-  Camera, 
-  Eye, 
-  EyeOff, 
+import {
+  Box,
+  RefreshCw,
+  X,
+  ImageIcon,
+  Camera,
+  Eye,
+  EyeOff,
   Download,
   Move,
   RotateCw,
@@ -27,6 +27,7 @@ const App: React.FC = () => {
     isProcessing: false,
     processingMode: 'room',
     selectedObjectId: null,
+    selectedPartIndex: null,
     error: null,
     roomSizeFeet: 12
   });
@@ -52,8 +53,8 @@ const App: React.FC = () => {
       } else {
         const spawnPos: [number, number, number] = [state.roomSizeFeet / 2, 0.5, state.roomSizeFeet / 2];
         const object = await analyzeSingleObject(state.image, spawnPos);
-        setState(prev => ({ 
-          ...prev, 
+        setState(prev => ({
+          ...prev,
           toolbox: [...(prev.toolbox || []), object],
           isProcessing: false,
           image: null
@@ -99,12 +100,49 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!state.selectedObjectId || !state.roomData) return;
+
       const moveStep = 0.5;
-      const rotStep = Math.PI / 2;
+      const rotStep = Math.PI / 4;
+      const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'q', 'Q', 'e', 'E', 'r', 'R'];
+
+      if (!keys.includes(e.key)) return;
+
+      // Prevent scrolling
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+      }
 
       setState(prev => {
         if (!prev.roomData || !prev.selectedObjectId) return prev;
         const objectsArray = prev.roomData.objects || [];
+
+        // If a part is selected, move the part instead of the object
+        if (prev.selectedPartIndex !== null) {
+          const newObjects = objectsArray.map(obj => {
+            if (obj.id !== prev.selectedObjectId) return obj;
+            const newParts = [...(obj.parts || [])];
+            const part = newParts[prev.selectedPartIndex!];
+            if (!part) return obj;
+
+            let [ox, oy, oz] = part.offset;
+            switch(e.key) {
+              case 'ArrowUp': oz -= moveStep; break;
+              case 'ArrowDown': oz += moveStep; break;
+              case 'ArrowLeft': ox -= moveStep; break;
+              case 'ArrowRight': ox += moveStep; break;
+              case 'q':
+              case 'Q': oy += moveStep; break;
+              case 'e':
+              case 'E': oy -= moveStep; break;
+              default: return obj;
+            }
+            newParts[prev.selectedPartIndex!] = { ...part, offset: [ox, oy, oz] };
+            return { ...obj, parts: newParts };
+          });
+          return { ...prev, roomData: { ...prev.roomData, objects: newObjects } };
+        }
+
+        // Otherwise move the whole object
         const newObjects = objectsArray.map(obj => {
           if (obj.id !== prev.selectedObjectId) return obj;
           let [x, y, z] = obj.position;
@@ -114,6 +152,10 @@ const App: React.FC = () => {
             case 'ArrowDown': z += moveStep; break;
             case 'ArrowLeft': x -= moveStep; break;
             case 'ArrowRight': x += moveStep; break;
+            case 'q':
+            case 'Q': y += moveStep; break;
+            case 'e':
+            case 'E': y -= moveStep; break;
             case 'r':
             case 'R': rotation = (rotation + rotStep) % (Math.PI * 2); break;
             default: return obj;
@@ -131,14 +173,14 @@ const App: React.FC = () => {
     e.stopPropagation();
     setState(prev => {
       if (!prev.roomData) return prev;
-      const newObjects = (prev.roomData.objects || []).map(obj => 
+      const newObjects = (prev.roomData.objects || []).map(obj =>
         obj.id === id ? { ...obj, visible: !(obj.visible !== false) } : obj
       );
       return { ...prev, roomData: { ...prev.roomData, objects: newObjects } };
     });
   };
 
-  const selectedObject = useMemo(() => 
+  const selectedObject = useMemo(() =>
     state.roomData?.objects?.find(o => o.id === state.selectedObjectId),
     [state.roomData, state.selectedObjectId]
   );
@@ -146,7 +188,7 @@ const App: React.FC = () => {
   return (
     <div className="flex flex-col h-screen bg-slate-50 overflow-hidden font-sans text-slate-900">
       {/* ... existing header ... */}
-      
+
       <main className="flex-1 flex overflow-hidden">
         {/* Left Sidebar */}
         <div className="w-80 border-r bg-white flex flex-col overflow-y-auto">
@@ -157,10 +199,10 @@ const App: React.FC = () => {
                 <div>
                   <label className="text-xs text-slate-500 mb-1 block">Room Size (Feet)</label>
                   <div className="flex items-center gap-2">
-                    <input 
-                      type="range" 
-                      min="6" 
-                      max="30" 
+                    <input
+                      type="range"
+                      min="6"
+                      max="30"
                       value={state.roomSizeFeet}
                       onChange={(e) => setState(prev => ({ ...prev, roomSizeFeet: parseInt(e.target.value) }))}
                       className="flex-1"
@@ -173,13 +215,13 @@ const App: React.FC = () => {
 
             <div className="flex-1 overflow-y-auto p-5 space-y-8 custom-scrollbar">
               <div className="flex p-1 bg-slate-900 rounded-2xl border border-slate-800">
-                <button 
+                <button
                   onClick={() => setState(prev => ({ ...prev, processingMode: 'room' }))}
                   className={`flex-1 py-2 px-3 rounded-xl text-[10px] font-black uppercase transition-all ${state.processingMode === 'room' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
                 >
                   Scan Room
                 </button>
-                <button 
+                <button
                   onClick={() => setState(prev => ({ ...prev, processingMode: 'object' }))}
                   className={`flex-1 py-2 px-3 rounded-xl text-[10px] font-black uppercase transition-all ${state.processingMode === 'object' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
                 >
@@ -233,7 +275,7 @@ const App: React.FC = () => {
                   </h2>
                   <span className="text-[10px] font-black text-indigo-500">{(state.toolbox || []).length} Items</span>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-3">
                   {(state.toolbox || []).map((item) => (
                     <button
@@ -263,7 +305,7 @@ const App: React.FC = () => {
                     {(state.roomData.objects || []).map(obj => (
                       <div
                         key={obj.id}
-                        onClick={() => setState(prev => ({ ...prev, selectedObjectId: obj.id }))}
+                        onClick={() => setState(prev => ({ ...prev, selectedObjectId: obj.id, selectedPartIndex: null }))}
                         className={`group w-full p-3 rounded-xl flex items-center gap-3 cursor-pointer transition-all border ${
                           state.selectedObjectId === obj.id ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900/40 border-slate-800 text-slate-500'
                         }`}
@@ -276,8 +318,8 @@ const App: React.FC = () => {
                       </div>
                     ))}
                   </div>
-                  <button 
-                    onClick={() => setState(prev => ({ ...prev, roomData: null, selectedObjectId: null, image: null }))} 
+                  <button
+                    onClick={() => setState(prev => ({ ...prev, roomData: null, selectedObjectId: null, image: null }))}
                     className="w-full py-3 bg-slate-900 text-slate-500 rounded-xl text-[10px] font-black uppercase border border-slate-800 hover:bg-slate-800 hover:text-white transition-all"
                   >
                     Clear Scene
@@ -294,7 +336,12 @@ const App: React.FC = () => {
             <VoxelScene
               roomData={state.roomData}
               selectedObjectId={state.selectedObjectId}
-              onSelectObject={(id) => setState(prev => ({ ...prev, selectedObjectId: id }))}
+              selectedPartIndex={state.selectedPartIndex}
+              onSelectObject={(id, partIndex = null) => setState(prev => ({
+                ...prev,
+                selectedObjectId: id,
+                selectedPartIndex: partIndex === undefined ? null : partIndex
+              }))}
             />
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#a5c9f3]">
@@ -316,15 +363,42 @@ const App: React.FC = () => {
                     <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mt-1 block">{selectedObject.type}</span>
                   </div>
                 </div>
-                <button onClick={() => setState(prev => ({ ...prev, selectedObjectId: null }))} className="p-1 hover:bg-slate-800 rounded-lg">
+                <button onClick={() => setState(prev => ({ ...prev, selectedObjectId: null, selectedPartIndex: null }))} className="p-1 hover:bg-slate-800 rounded-lg">
                   <X className="w-5 h-5 text-slate-500" />
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-2 text-[9px] font-black uppercase text-indigo-400/60">
                   <div className="bg-slate-950/50 p-2 rounded-lg flex items-center gap-2 justify-center"><Move className="w-3 h-3" /> Arrows</div>
+                  <div className="bg-slate-950/50 p-2 rounded-lg flex items-center gap-2 justify-center"><span className="text-[10px]">Q / E</span> Vertical</div>
                   <div className="bg-slate-950/50 p-2 rounded-lg flex items-center gap-2 justify-center"><RotateCw className="w-3 h-3" /> Key R</div>
+                </div>
+
+                {/* Components / Parts Editor */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                      <Shapes className="w-3 h-3" /> Components
+                    </h5>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+                    {(selectedObject.parts || []).map((part, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setState(prev => ({ ...prev, selectedPartIndex: prev.selectedPartIndex === idx ? null : idx }))}
+                        className={`flex items-center gap-3 p-2 rounded-xl border transition-all ${
+                          state.selectedPartIndex === idx
+                            ? 'bg-indigo-600/20 border-indigo-500 text-white'
+                            : 'bg-slate-950/30 border-slate-800 text-slate-400 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="w-4 h-4 rounded shadow-inner" style={{ backgroundColor: part.color || selectedObject.color }}></div>
+                        <span className="text-[9px] font-bold uppercase">Part {idx + 1}</span>
+                        {state.selectedPartIndex === idx && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></div>}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="p-3 bg-slate-950/50 rounded-xl border border-slate-800">
@@ -332,13 +406,13 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="flex gap-2">
-                  <button 
+                  <button
                     onClick={addToToolbox}
                     className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 transition-all"
                   >
                     <PackagePlus className="w-4 h-4" /> Save Asset
                   </button>
-                  <button 
+                  <button
                     onClick={() => {
                       setState(prev => {
                         if (!prev.roomData) return prev;

@@ -33,6 +33,7 @@ export interface AppState {
   isProcessing: boolean;
   processingMode: 'room' | 'object';
   selectedObjectId: string | null;
+  selectedPartIndex: number | null;
   error: string | null;
   roomSizeFeet: number;
 }

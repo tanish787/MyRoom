@@ -8,10 +8,16 @@ import VoxelObject from './VoxelObject';
 interface VoxelSceneProps {
   roomData: RoomData;
   selectedObjectId: string | null;
-  onSelectObject: (id: string) => void;
+  selectedPartIndex: number | null;
+  onSelectObject: (id: string, partIndex?: number | null) => void;
 }
 
-const VoxelScene: React.FC<VoxelSceneProps> = ({ roomData, selectedObjectId, onSelectObject }) => {
+const VoxelScene: React.FC<VoxelSceneProps> = ({
+  roomData,
+  selectedObjectId,
+  selectedPartIndex,
+  onSelectObject
+}) => {
   const controlsRef = useRef<any>(null);
 
   // Use dimensions from roomData or default to 12x12
@@ -65,6 +71,7 @@ const VoxelScene: React.FC<VoxelSceneProps> = ({ roomData, selectedObjectId, onS
               key={obj.id}
               object={obj}
               isSelected={selectedObjectId === obj.id}
+              selectedPartIndex={selectedObjectId === obj.id ? selectedPartIndex : null}
               onSelect={onSelectObject}
             />
           ))}
