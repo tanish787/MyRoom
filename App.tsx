@@ -97,6 +97,19 @@ const App: React.FC = () => {
     });
   };
 
+  const exportToJson = () => {
+    if (!state.roomData) return;
+    const dataStr = JSON.stringify(state.roomData, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    
+    const exportFileDefaultName = `voxel-room-${Date.now()}.json`;
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!state.selectedObjectId || !state.roomData) return;
@@ -323,6 +336,12 @@ const App: React.FC = () => {
                     className="w-full py-3 bg-slate-900 text-slate-500 rounded-xl text-[10px] font-black uppercase border border-slate-800 hover:bg-slate-800 hover:text-white transition-all"
                   >
                     Clear Scene
+                  </button>
+                  <button 
+                    onClick={exportToJson}
+                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 shadow-lg transition-all"
+                  >
+                    <Download className="w-4 h-4" /> Export JSON
                   </button>
                 </section>
               )}
