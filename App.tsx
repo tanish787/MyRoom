@@ -16,8 +16,9 @@ import {
   Shapes
 } from 'lucide-react';
 import { AppState, VoxelObject } from './types';
-import { analyzeRoomImage, analyzeSingleObject } from './services/geminiService';
+import { analyzeRoomImage, analyzeSingleObject, extractRoomState } from './services/geminiService';
 import VoxelScene from './components/VoxelScene';
+import MarketplacePanel from './components/MarketplacePanel';
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>({
@@ -49,6 +50,8 @@ const App: React.FC = () => {
     try {
       if (state.processingMode === 'room') {
         const data = await analyzeRoomImage(state.image, state.roomSizeFeet);
+        // Also extract room state for marketplace recommendations
+        await extractRoomState(state.image, state.roomSizeFeet);
         setState(prev => ({ ...prev, roomData: data, isProcessing: false }));
       } else {
         const spawnPos: [number, number, number] = [state.roomSizeFeet / 2, 0.5, state.roomSizeFeet / 2];
@@ -330,53 +333,55 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Main Area */}
-        <div className="flex-1 relative">
-          {state.roomData ? (
-            <VoxelScene
-              roomData={state.roomData}
-              selectedObjectId={state.selectedObjectId}
-              selectedPartIndex={state.selectedPartIndex}
-              onSelectObject={(id, partIndex = null) => setState(prev => ({
-                ...prev,
-                selectedObjectId: id,
-                selectedPartIndex: partIndex === undefined ? null : partIndex
-              }))}
-            />
-          ) : (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#a5c9f3]">
-               <div className="w-32 h-32 bg-white/20 rounded-[3rem] backdrop-blur-xl border border-white/30 flex items-center justify-center mb-8 animate-bounce">
-                <Box className="w-16 h-16 text-white" />
-               </div>
-               <h2 className="text-3xl font-black italic text-white uppercase tracking-tighter drop-shadow-lg text-center px-4 leading-tight">Ready to Build</h2>
-               <p className="text-white/60 font-bold uppercase tracking-widest text-[10px] mt-4">Snap a photo to generate voxel blocks</p>
-            </div>
-          )}
-
-          {selectedObject && (
-            <div className="absolute bottom-8 left-8 w-80 bg-slate-900/90 backdrop-blur-2xl rounded-3xl shadow-2xl p-6 border border-slate-700/50 text-white animate-in slide-in-from-left-4 z-20">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl shadow-inner border border-white/10" style={{ backgroundColor: selectedObject.color }}></div>
-                  <div>
-                    <h4 className="font-black text-base uppercase italic leading-none">{selectedObject.name}</h4>
-                    <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mt-1 block">{selectedObject.type}</span>
-                  </div>
-                </div>
-                <button onClick={() => setState(prev => ({ ...prev, selectedObjectId: null, selectedPartIndex: null }))} className="p-1 hover:bg-slate-800 rounded-lg">
-                  <X className="w-5 h-5 text-slate-500" />
-                </button>
+        {/* Right Main Area - Voxel Scene and Marketplace */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Center - Voxel Scene */}
+          <div className="flex-1 relative">
+            {state.roomData ? (
+              <VoxelScene
+                roomData={state.roomData}
+                selectedObjectId={state.selectedObjectId}
+                selectedPartIndex={state.selectedPartIndex}
+                onSelectObject={(id, partIndex = null) => setState(prev => ({
+                  ...prev,
+                  selectedObjectId: id,
+                  selectedPartIndex: partIndex === undefined ? null : partIndex
+                }))}
+              />
+            ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#a5c9f3]">
+                 <div className="w-32 h-32 bg-white/20 rounded-[3rem] backdrop-blur-xl border border-white/30 flex items-center justify-center mb-8 animate-bounce">
+                  <Box className="w-16 h-16 text-white" />
+                 </div>
+                 <h2 className="text-3xl font-black italic text-white uppercase tracking-tighter drop-shadow-lg text-center px-4 leading-tight">Ready to Build</h2>
+                 <p className="text-white/60 font-bold uppercase tracking-widest text-[10px] mt-4">Snap a photo to generate voxel blocks</p>
               </div>
+            )}
 
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-2 text-[9px] font-black uppercase text-indigo-400/60">
-                  <div className="bg-slate-950/50 p-2 rounded-lg flex items-center gap-2 justify-center"><Move className="w-3 h-3" /> Arrows</div>
-                  <div className="bg-slate-950/50 p-2 rounded-lg flex items-center gap-2 justify-center"><span className="text-[10px]">Q / E</span> Vertical</div>
-                  <div className="bg-slate-950/50 p-2 rounded-lg flex items-center gap-2 justify-center"><RotateCw className="w-3 h-3" /> Key R</div>
+            {selectedObject && (
+              <div className="absolute bottom-8 left-8 w-80 bg-slate-900/90 backdrop-blur-2xl rounded-3xl shadow-2xl p-6 border border-slate-700/50 text-white animate-in slide-in-from-left-4 z-20">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl shadow-inner border border-white/10" style={{ backgroundColor: selectedObject.color }}></div>
+                    <div>
+                      <h4 className="font-black text-base uppercase italic leading-none">{selectedObject.name}</h4>
+                      <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mt-1 block">{selectedObject.type}</span>
+                    </div>
+                  </div>
+                  <button onClick={() => setState(prev => ({ ...prev, selectedObjectId: null, selectedPartIndex: null }))} className="p-1 hover:bg-slate-800 rounded-lg">
+                    <X className="w-5 h-5 text-slate-500" />
+                  </button>
                 </div>
 
-                {/* Components / Parts Editor */}
-                <div className="space-y-3">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-2 text-[9px] font-black uppercase text-indigo-400/60">
+                    <div className="bg-slate-950/50 p-2 rounded-lg flex items-center gap-2 justify-center"><Move className="w-3 h-3" /> Arrows</div>
+                    <div className="bg-slate-950/50 p-2 rounded-lg flex items-center gap-2 justify-center"><span className="text-[10px]">Q / E</span> Vertical</div>
+                    <div className="bg-slate-950/50 p-2 rounded-lg flex items-center gap-2 justify-center"><RotateCw className="w-3 h-3" /> Key R</div>
+                  </div>
+
+                  {/* Components / Parts Editor */}
+                  <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                       <Shapes className="w-3 h-3" /> Components
@@ -428,6 +433,52 @@ const App: React.FC = () => {
               </div>
             </div>
           )}
+          </div>
+
+          {/* Right - Marketplace Panel */}
+          <div className="w-80 overflow-hidden">
+            <MarketplacePanel
+              roomData={state.roomData}
+              onAddProduct={(product, position) => {
+                const newObject: VoxelObject = {
+                  id: `marketplace-${Date.now()}`,
+                  name: product.name,
+                  type: product.category,
+                  position,
+                  rotation: 0,
+                  color: product.colors[0] || '#cbd5e1',
+                  description: product.description,
+                  parts: [],
+                  visible: true
+                };
+
+                setState(prev => {
+                  if (!prev.roomData) {
+                    return {
+                      ...prev,
+                      roomData: {
+                        wallColor: '#cbd5e1',
+                        floorColor: '#94a3b8',
+                        objects: [newObject],
+                        dimensions: { width: prev.roomSizeFeet, depth: prev.roomSizeFeet }
+                      },
+                      selectedObjectId: newObject.id
+                    };
+                  }
+
+                  return {
+                    ...prev,
+                    roomData: {
+                      ...prev.roomData,
+                      objects: [...(prev.roomData.objects || []), newObject]
+                    },
+                    selectedObjectId: newObject.id
+                  };
+                });
+              }}
+              roomSizeFeet={state.roomSizeFeet}
+            />
+          </div>
         </div>
       </main>
     </div>
