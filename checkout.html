@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - My Room</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+         .container {
+             max-width: 800px;
+             margin: 0 auto;
+             background: #ffffff;
+             border-radius: 30px;
+             padding: 30px;
+             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+             border: 3px solid #228B22;
+         }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+
+         .header h1 {
+             color: #1a6b1a;
+             font-size: 32px;
+             font-weight: bold;
+         }
+
+         .back-btn {
+             padding: 12px 24px;
+             background: #228B22;
+             color: white;
+             border: 3px solid #1a6b1a;
+             border-radius: 20px;
+             font-size: 16px;
+             font-weight: bold;
+             cursor: pointer;
+             text-decoration: none;
+             display: inline-block;
+             transition: all 0.2s;
+             box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+         }
+
+         .back-btn:hover {
+             background: #1a6b1a;
+             transform: translateY(-2px);
+             box-shadow: 0 5px 12px rgba(0, 0, 0, 0.3);
+         }
+
+         .item-info {
+             background: #e8f5e9;
+             padding: 20px;
+             border-radius: 20px;
+             margin-bottom: 30px;
+             border: 2px solid #90EE90;
+         }
+
+        .item-info h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 24px;
+            text-transform: capitalize;
+        }
+
+        .item-details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .item-detail {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .item-detail label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .item-detail span {
+            font-size: 16px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .item-price-large {
+            font-size: 32px;
+            color: #228B22;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+         .seller-info {
+             background: #c8e6c9;
+             padding: 15px;
+             border-radius: 20px;
+             margin-bottom: 30px;
+             border: 2px solid #90EE90;
+         }
+
+        .seller-info h3 {
+            color: #1a6b1a;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .seller-info p {
+            margin: 5px 0;
+            color: #666;
+        }
+
+        .quantity-section {
+            margin-bottom: 30px;
+        }
+
+        .quantity-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+         .quantity-btn {
+             width: 45px;
+             height: 45px;
+             background: #228B22;
+             color: white;
+             border: 2px solid #1a6b1a;
+             border-radius: 15px;
+             font-size: 24px;
+             font-weight: bold;
+             cursor: pointer;
+             transition: all 0.2s;
+             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+         }
+
+         .quantity-btn:hover {
+             background: #1a6b1a;
+             transform: scale(1.1);
+         }
+
+        .quantity-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+         .quantity-input {
+             width: 80px;
+             padding: 10px;
+             border: 3px solid #228B22;
+             border-radius: 15px;
+             font-size: 20px;
+             text-align: center;
+             font-weight: bold;
+             background: #ffffff;
+         }
+
+        .quantity-input:focus {
+            outline: none;
+            border-color: #228B22;
+        }
+
+        .payment-section {
+            margin-bottom: 30px;
+        }
+
+        .payment-section h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+         .form-group input {
+             width: 100%;
+             padding: 15px;
+             border: 3px solid #228B22;
+             border-radius: 20px;
+             font-size: 16px;
+             background: #ffffff;
+             transition: all 0.2s;
+             font-weight: 500;
+         }
+
+         .form-group input:focus {
+             outline: none;
+             border-color: #1a6b1a;
+             border-width: 4px;
+             box-shadow: 0 0 0 3px rgba(34, 139, 34, 0.2);
+         }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+         .order-summary {
+             background: #fff9c4;
+             padding: 20px;
+             border-radius: 20px;
+             margin-bottom: 30px;
+             border: 3px solid #fdd835;
+         }
+
+        .order-summary h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .summary-row:last-child {
+            border-bottom: none;
+        }
+
+        .summary-total {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #228B22;
+            font-size: 24px;
+            font-weight: bold;
+            color: #1a6b1a;
+        }
+
+         .confirm-btn {
+             width: 100%;
+             padding: 18px;
+             background: #228B22;
+             color: white;
+             border: 3px solid #1a6b1a;
+             border-radius: 25px;
+             font-size: 20px;
+             font-weight: bold;
+             cursor: pointer;
+             transition: all 0.2s;
+             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+         }
+
+         .confirm-btn:hover {
+             background: #1a6b1a;
+             transform: translateY(-2px);
+             box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+         }
+
+        .confirm-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            color: #d32f2f;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Checkout</h1>
+            <a href="index.html" class="back-btn">← Back to Room</a>
+        </div>
+
+        <div id="item-info" class="item-info">
+            <h2 id="item-name"></h2>
+            <div class="item-details">
+                <div class="item-detail">
+                    <label>Price per item</label>
+                    <span id="item-price">$0</span>
+                </div>
+                <div class="item-detail">
+                    <label>Seller</label>
+                    <span id="item-seller"></span>
+                </div>
+                <div class="item-detail">
+                    <label>Rating</label>
+                    <span id="item-rating"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="seller-info" id="seller-info">
+            <h3>Seller Contact Information</h3>
+            <p id="seller-phone"></p>
+            <p id="seller-email"></p>
+        </div>
+
+        <div class="quantity-section">
+            <h3>Quantity</h3>
+            <div class="quantity-controls">
+                <button class="quantity-btn" id="decrease-qty">−</button>
+                <input type="number" class="quantity-input" id="quantity" value="1" min="1" max="99">
+                <button class="quantity-btn" id="increase-qty">+</button>
+            </div>
+        </div>
+
+        <div class="payment-section">
+            <h3>Payment Information</h3>
+            <div class="form-group">
+                <label for="card-name">Cardholder Name</label>
+                <input type="text" id="card-name" placeholder="John Doe">
+            </div>
+            <div class="form-group">
+                <label for="card-number">Card Number</label>
+                <input type="text" id="card-number" placeholder="1234 5678 9012 3456" maxlength="19">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="card-expiry">Expiry Date</label>
+                    <input type="text" id="card-expiry" placeholder="MM/YY" maxlength="5">
+                </div>
+                <div class="form-group">
+                    <label for="card-cvv">CVV</label>
+                    <input type="text" id="card-cvv" placeholder="123" maxlength="3">
+                </div>
+            </div>
+        </div>
+
+        <div class="order-summary">
+            <h3>Order Summary</h3>
+            <div class="summary-row">
+                <span>Item</span>
+                <span id="summary-item-name"></span>
+            </div>
+            <div class="summary-row">
+                <span>Quantity</span>
+                <span id="summary-quantity">1</span>
+            </div>
+            <div class="summary-row">
+                <span>Price per item</span>
+                <span id="summary-unit-price">$0</span>
+            </div>
+            <div class="summary-total">
+                <span>Total</span>
+                <span id="summary-total">$0</span>
+            </div>
+        </div>
+
+        <button class="confirm-btn" id="confirm-order">Confirm & Pay</button>
+    </div>
+
+    <script>
+        // Load item data from localStorage
+        const itemData = JSON.parse(localStorage.getItem('checkoutItem') || '{}');
+        
+        if (!itemData.name) {
+            // If no item data, redirect back
+            window.location.href = 'index.html';
+        }
+
+        // Display item information
+        document.getElementById('item-name').textContent = itemData.name.charAt(0).toUpperCase() + itemData.name.slice(1);
+        document.getElementById('item-price').textContent = `$${itemData.price}`;
+        document.getElementById('item-seller').textContent = itemData.seller;
+         document.getElementById('item-rating').textContent = `${itemData.rating.toFixed(1)} stars`;
+        document.getElementById('seller-phone').textContent = `Phone: ${itemData.phone}`;
+        document.getElementById('seller-email').textContent = `Email: ${itemData.email}`;
+
+        // Quantity controls
+        const quantityInput = document.getElementById('quantity');
+        const decreaseBtn = document.getElementById('decrease-qty');
+        const increaseBtn = document.getElementById('increase-qty');
+        let quantity = 1;
+
+        function updateQuantity(value) {
+            quantity = Math.max(1, Math.min(99, value));
+            quantityInput.value = quantity;
+            updateOrderSummary();
+        }
+
+        decreaseBtn.addEventListener('click', () => {
+            updateQuantity(quantity - 1);
+        });
+
+        increaseBtn.addEventListener('click', () => {
+            updateQuantity(quantity + 1);
+        });
+
+        quantityInput.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value) || 1;
+            updateQuantity(value);
+        });
+
+        // Update order summary
+        function updateOrderSummary() {
+            const unitPrice = itemData.price;
+            const total = unitPrice * quantity;
+            
+            document.getElementById('summary-item-name').textContent = itemData.name.charAt(0).toUpperCase() + itemData.name.slice(1);
+            document.getElementById('summary-quantity').textContent = quantity;
+            document.getElementById('summary-unit-price').textContent = `$${unitPrice}`;
+            document.getElementById('summary-total').textContent = `$${total}`;
+        }
+
+        // Format card number input
+        const cardNumberInput = document.getElementById('card-number');
+        cardNumberInput.addEventListener('input', (e) => {
+            let value = e.target.value.replace(/\s/g, '');
+            if (value.length > 0) {
+                value = value.match(/.{1,4}/g).join(' ');
+            }
+            e.target.value = value;
+        });
+
+        // Format expiry date input
+        const cardExpiryInput = document.getElementById('card-expiry');
+        cardExpiryInput.addEventListener('input', (e) => {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length >= 2) {
+                value = value.substring(0, 2) + '/' + value.substring(2, 4);
+            }
+            e.target.value = value;
+        });
+
+        // Only allow numbers for CVV
+        const cardCvvInput = document.getElementById('card-cvv');
+        cardCvvInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/\D/g, '');
+        });
+
+        // Load saved payment info
+        function loadPaymentInfo() {
+            const savedCardName = localStorage.getItem('cardName');
+            const savedCardNumber = localStorage.getItem('cardNumber');
+            const savedCardExpiry = localStorage.getItem('cardExpiry');
+            const savedCardCvv = localStorage.getItem('cardCvv');
+            
+            if (savedCardName) document.getElementById('card-name').value = savedCardName;
+            if (savedCardNumber) document.getElementById('card-number').value = savedCardNumber;
+            if (savedCardExpiry) document.getElementById('card-expiry').value = savedCardExpiry;
+            if (savedCardCvv) document.getElementById('card-cvv').value = savedCardCvv;
+        }
+
+        // Save payment info
+        function savePaymentInfo() {
+            const cardName = document.getElementById('card-name').value;
+            const cardNumber = document.getElementById('card-number').value;
+            const cardExpiry = document.getElementById('card-expiry').value;
+            const cardCvv = document.getElementById('card-cvv').value;
+            
+            if (cardName) localStorage.setItem('cardName', cardName);
+            if (cardNumber) localStorage.setItem('cardNumber', cardNumber);
+            if (cardExpiry) localStorage.setItem('cardExpiry', cardExpiry);
+            if (cardCvv) localStorage.setItem('cardCvv', cardCvv);
+        }
+
+        // Confirm order
+        const confirmBtn = document.getElementById('confirm-order');
+        confirmBtn.addEventListener('click', () => {
+            const cardName = document.getElementById('card-name').value;
+            const cardNumber = document.getElementById('card-number').value;
+            const cardExpiry = document.getElementById('card-expiry').value;
+            const cardCvv = document.getElementById('card-cvv').value;
+            
+            // Validate form
+            if (!cardName || !cardNumber || !cardExpiry || !cardCvv) {
+                alert('Please fill in all payment information');
+                return;
+            }
+
+            if (cardNumber.replace(/\s/g, '').length < 16) {
+                alert('Please enter a valid card number');
+                return;
+            }
+
+            if (cardExpiry.length !== 5) {
+                alert('Please enter a valid expiry date (MM/YY)');
+                return;
+            }
+
+            if (cardCvv.length < 3) {
+                alert('Please enter a valid CVV');
+                return;
+            }
+            
+            // Save payment info
+            savePaymentInfo();
+            
+            // Show confirmation
+            const total = itemData.price * quantity;
+            if (confirm(`Confirm order for ${quantity} ${itemData.name}(s) - Total: $${total}?`)) {
+                alert('Order confirmed! The seller will contact you soon.');
+                // Clear checkout data
+                localStorage.removeItem('checkoutItem');
+                // Redirect back to room
+                window.location.href = 'index.html';
+            }
+        });
+
+        // Initialize
+        loadPaymentInfo();
+        updateOrderSummary();
+    </script>
+</body>
+</html>

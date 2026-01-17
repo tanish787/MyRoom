@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Room - Drag & Drop Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: rgba(245, 245, 245, 0.95);
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            z-index: 1;
+        }
+
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 300px;
+            color: #ffffff;
+            background: #1a6b1a;
+            padding: 18px 22px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 100;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            /* border: 3px solid #90EE90; */
+            min-width: 200px;
+        }
+
+        #info-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        #info h2 {
+            margin: 0;
+            font-size: 18px;
+            flex: 1;
+        }
+
+        #room-name-input {
+            border: 2px solid #ffffff;
+            background: #1a6b1a;
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffffff;
+            padding: 5px 10px;
+            margin: 0;
+            width: 100%;
+            outline: none;
+            border-radius: 15px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: all 0.2s;
+        }
+
+        #room-name-input:focus {
+            border-color: #86f300;
+            border-width: 3px;
+            background: #1a6b1a;
+            box-shadow: 0 0 0 3px rgba(34, 139, 34, 0.2);
+        }
+
+        #minimize-btn {
+            background: #1a6b1a;
+            border: 2px solid #ffffff;
+            border-radius: 12px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #ffffff;
+            padding: 5px 10px;
+            line-height: 1;
+            transition: all 0.2s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        #minimize-btn:hover {
+            background: #e8f5e9;
+            border-color: #ffffff;
+            transform: scale(1.1);
+            color: #1a6b1a;
+        }
+
+        #info.minimized {
+            padding: 10px 15px;
+        }
+
+        #info.minimized #info-content {
+            display: none;
+        }
+
+        #info p {
+            margin: 5px 0;
+            line-height: 1.5;
+        }
+
+        .dragging {
+            cursor: grabbing !important;
+        }
+
+        #tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 200;
+            display: none;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        #items-panel {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background: #1a6b1a;
+            border-right: 4px solid #228B22;
+            overflow-y: auto;
+            overflow-x: hidden;
+            z-index: 150;
+            box-shadow: 3px 0 15px rgba(0, 0, 0, 0.2);
+        }
+
+        #items-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #items-panel::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        #items-panel::-webkit-scrollbar-thumb {
+            background: #228B22;
+            border-radius: 4px;
+            color: #ffffff;
+        }
+
+        #items-panel::-webkit-scrollbar-thumb:hover {
+            background: #1a6b1a;
+            color: #ffffff;
+        }
+
+        #items-panel h2 {
+            padding: 20px;
+            margin: 0;
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            background: #1a6b1a;
+            border-bottom: 3px solid #228B22;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+        }
+
+        .item-card {
+            background: #ffffff;
+            margin: 12px;
+            padding: 15px;
+            border-radius: 20px;
+            border: 3px solid #90EE90;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+            transition: all 0.2s;
+        }
+
+        .item-image-container {
+            width: 100%;
+            height: 80px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #f5f5f5;
+            border-radius: 15px;
+            margin-bottom: 10px;
+            padding: 5px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .item-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .item-card:hover {
+            transform: translateX(5px) scale(1.02);
+            color: #1a6b1a;
+            text-emphasis-color: #1a6b1a;
+            background: #ffffff;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.25);
+            border-color: #228B22;
+            border-width: 4px;
+        }
+
+        .item-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1a6b1a;
+            margin-bottom: 5px;
+            text-transform: capitalize;
+        }
+
+
+        .item-price {
+            font-size: 20px;
+            font-weight: bold;
+            color: #228B22;
+            margin-bottom: 8px;
+        }
+
+        .item-seller {
+            font-size: 14px;
+            color: #2d5016;
+            margin-bottom: 6px;
+        }
+
+        .item-rating {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .stars {
+            color: #FFD700;
+            font-size: 18px;
+            letter-spacing: 2px;
+        }
+
+        .rating-text {
+            font-size: 14px;
+            color: #1a6b1a;
+            font-weight: 600;
+        }
+
+        .buy-btn {
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            background: #228B22;
+            color: white;
+            border: 3px solid #1a6b1a;
+            border-radius: 20px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .buy-btn:hover {
+            background: #1a6b1a;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .buy-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Checkout Modal */
+        #checkout-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #checkout-modal.active {
+            display: flex;
+        }
+
+        .checkout-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .checkout-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 15px;
+        }
+
+        .checkout-header h2 {
+            margin: 0;
+            color: #1a6b1a;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .seller-info {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .seller-info h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .seller-info p {
+            margin: 5px 0;
+            color: #666;
+        }
+
+        .payment-section {
+            margin-bottom: 20px;
+        }
+
+        .payment-section h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #228B22;
+        }
+
+        .order-summary {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .order-summary h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .order-item:last-child {
+            border-bottom: none;
+        }
+
+        .order-total {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 2px solid #228B22;
+            font-weight: bold;
+            font-size: 18px;
+            color: #1a6b1a;
+        }
+
+        .confirm-btn {
+            width: 100%;
+            padding: 12px;
+            background: #228B22;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .confirm-btn:hover {
+            background: #1a6b1a;
+        }
+
+        .confirm-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        #room-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 240px;
+            color: #ffffff;
+            background: #1a6b1a;
+            /* border: 4px solid #90EE90; */
+            border-radius: 25px;
+            padding: 18px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            z-index: 150;
+        }
+
+        #room-controls h3 {
+            margin: 0 0 12px 0;
+            color: #ffffff;
+            font-size: 16px;
+        }
+
+        .room-colors {
+            margin-bottom: 20px;
+        }
+
+        .room-colors h4 {
+            margin: 0 0 8px 0;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .room-color-pickers {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .room-color-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #ffffff;
+        }
+
+        .room-color-wrapper label {
+            font-size: 12px;
+            color: #ffffff;
+            min-width: 50px;
+        }
+
+        .room-color-picker {
+            width: 60px;
+            height: 35px;
+            /* border: 3px solid #228B22; */
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+            /* box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15); */
+        }
+
+        .room-color-picker:hover {
+            transform: scale(1.1);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+            border-width: 4px;
+        }
+
+        .color-palette {
+            margin-bottom: 15px;
+        }
+
+        .color-palette h4 {
+            margin: 0 0 8px 0;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .color-pickers {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .color-picker-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .color-picker {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #228B22;
+            border-radius: 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .color-picker:hover {
+            transform: scale(1.15);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            border-width: 5px;
+        }
+
+        .color-picker.selected {
+            border-color: #1a6b1a;
+            box-shadow: 0 0 0 4px rgba(34, 139, 34, 0.3);
+        }
+
+        .room-styles {
+            margin-bottom: 15px;
+        }
+
+        .room-styles h4 {
+            margin: 0 0 8px 0;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .style-options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .style-option {
+            padding: 10px;
+            border: 3px solid #228B22;
+            border-radius: 15px;
+            background: #1a6b1a;
+            cursor: pointer;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .style-option:hover {
+            background: #ffffff;
+            border-color: #228B22;
+            color: #000000;
+            transform: scale(1.05);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .style-option.selected {
+            background: #14d414;
+            color: white;
+            border-color: #1a6b1a;
+            border-width: 4px;
+            box-shadow: 0 4px 10px rgba(34, 139, 34, 0.4);
+        }
+
+        #generate-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: 3px solid #5a67d8;
+            border-radius: 20px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3);
+        }
+
+        #generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(102, 126, 234, 0.5);
+            border-width: 4px;
+        }
+
+        #generate-btn:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="items-panel">
+        <h2>Items in Room</h2>
+        <div id="items-list"></div>
+    </div>
+    <div id="info">
+        <div id="info-header">
+            <input type="text" id="room-name-input" value="My Room" maxlength="30">
+            <button id="minimize-btn">−</button>
+        </div>
+        <div id="info-content">
+            <p>Click and drag objects to move them around the room</p>
+            <p>Hover over objects to see their names</p>
+        </div>
+    </div>
+    <div id="tooltip"></div>
+    <div id="room-controls">
+        <h3>Room Designer</h3>
+        <div class="room-colors">
+            <h4>Room Colors</h4>
+            <div class="room-color-pickers">
+                <div class="room-color-wrapper">
+                    <label>Floor</label>
+                    <input type="color" class="room-color-picker" id="floor-color" value="#e0e0e0">
+                </div>
+                <div class="room-color-wrapper">
+                    <label>Wall 1</label>
+                    <input type="color" class="room-color-picker" id="wall1-color" value="#a0a0ff">
+                </div>
+                <div class="room-color-wrapper">
+                    <label>Wall 2</label>
+                    <input type="color" class="room-color-picker" id="wall2-color" value="#ffa0a0">
+                </div>
+            </div>
+        </div>
+        <div class="color-palette">
+            <h4>Colour Scheme</h4>
+            <div class="color-pickers">
+                <div class="color-picker-wrapper">
+                    <input type="color" class="color-picker" id="color1" value="#ff6b6b">
+                </div>
+                <div class="color-picker-wrapper">
+                    <input type="color" class="color-picker" id="color2" value="#4ecdc4">
+                </div>
+                <div class="color-picker-wrapper">
+                    <input type="color" class="color-picker" id="color3" value="#95e1d3">
+                </div>
+            </div>
+        </div>
+        <div class="room-styles">
+            <h4>Room Style</h4>
+            <div class="style-options">
+                <div class="style-option" data-style="modern">Modern</div>
+                <div class="style-option" data-style="classic">Classic</div>
+                <div class="style-option" data-style="minimalist">Minimalist</div>
+                <div class="style-option selected" data-style="eclectic">Eclectic</div>
+                <div class="style-option" data-style="rustic">Rustic</div>
+            </div>
+        </div>
+        <button id="generate-btn">Generate Room</button>
+    </div>
+
+    <!-- Checkout Modal -->
+    <div id="checkout-modal">
+        <div class="checkout-content">
+            <div class="checkout-header">
+                <h2>Checkout</h2>
+                <button class="close-btn" id="close-checkout">×</button>
+            </div>
+            <div class="seller-info" id="seller-info">
+                <h3>Seller Information</h3>
+                <p id="seller-name"></p>
+                <p id="seller-phone"></p>
+                <p id="seller-email"></p>
+            </div>
+            <div class="order-summary" id="order-summary">
+                <h3>Order Summary</h3>
+                <div id="order-items"></div>
+                <div class="order-total">
+                    <span>Total:</span>
+                    <span id="order-total">$0</span>
+                </div>
+            </div>
+            <div class="payment-section">
+                <h3>Payment Information</h3>
+                <div class="form-group">
+                    <label for="card-name">Cardholder Name</label>
+                    <input type="text" id="card-name" placeholder="John Doe">
+                </div>
+                <div class="form-group">
+                    <label for="card-number">Card Number</label>
+                    <input type="text" id="card-number" placeholder="1234 5678 9012 3456" maxlength="19">
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="card-expiry">Expiry Date</label>
+                        <input type="text" id="card-expiry" placeholder="MM/YY" maxlength="5">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="card-cvv">CVV</label>
+                        <input type="text" id="card-cvv" placeholder="123" maxlength="3">
+                    </div>
+                </div>
+            </div>
+            <button class="confirm-btn" id="confirm-order">Confirm & Pay</button>
+        </div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module" src="game.js"></script>
+</body>
+</html>
