@@ -48,7 +48,10 @@ const App: React.FC = () => {
   const [authInput, setAuthInput] = useState({ email: '', password: '' });
   const [isRegistering, setIsRegistering] = useState(false);
   const [marketplaceSearch, setMarketplaceSearch] = useState('');
+  const [currentTab, setCurrentTab] = useState<'room' | 'shop'>('room');
   const [chatInput, setChatInput] = useState('');
+  const [priceRange, setPriceRange] = useState({ min: 0, max: 10000 });
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   const [listingForm, setListingForm] = useState({
     name: '',
@@ -59,6 +62,45 @@ const App: React.FC = () => {
   });
 
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Analytics tracking functions
+  const trackMarketplaceAction = async (action: 'view' | 'hover' | 'scroll' | 'add_to_room' | 'remove_from_room' | 'search', itemId?: string, itemName?: string, itemType?: string, itemColor?: string, timeSpent?: number, searchQuery?: string) => {
+    if (!state.user) return;
+    
+    try {
+      await fetch('http://localhost:5001/analytics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: state.user.userId,
+          itemId,
+          itemName,
+          itemType,
+          itemColor,
+          action,
+          timeSpent: timeSpent || 0,
+          searchQuery
+        })
+      });
+    } catch (err) {
+      console.error('Error tracking analytics:', err);
+    }
+  };
+
+  const loadRecommendations = async () => {
+    if (!state.user) return;
+    
+    try {
+      const res = await fetch(`http://localhost:5001/recommendations/${state.user.userId}?limit=5`);
+      const data = await res.json();
+      if (res.ok && data.length > 0) {
+        // Store recommendations in state
+        setState(prev => ({ ...prev, marketplaceItems: data }));
+      }
+    } catch (err) {
+      console.error('Error loading recommendations:', err);
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -262,9 +304,20 @@ const App: React.FC = () => {
     const s = query !== undefined ? query : marketplaceSearch;
     try {
       const res = await fetch(`http://localhost:5001/marketplace?search=${s}`);
-      const data = await res.json();
+      let data = await res.json();
       if (res.ok) {
+        // Apply filters
+        data = data.filter((item: any) => {
+          const price = parseFloat(item.price);
+          const meetsPrice = price >= priceRange.min && price <= priceRange.max;
+          const meetsCategory = selectedCategories.length === 0 || selectedCategories.includes(item.type);
+          return meetsPrice && meetsCategory;
+        });
         setState(prev => ({ ...prev, marketplaceItems: data }));
+        // Track search action
+        if (state.user && s) {
+          trackMarketplaceAction('search', undefined, undefined, undefined, undefined, 0, s);
+        }
       }
     } catch (err) {
       console.error('Marketplace search error', err);
@@ -287,6 +340,13 @@ const App: React.FC = () => {
       setSearchTimeout(timeout);
     }
   }, [marketplaceSearch]);
+
+  // Apply filters when they change
+  useEffect(() => {
+    if (currentTab === 'shop' || state.processingMode === 'marketplace') {
+      searchMarketplace();
+    }
+  }, [priceRange, selectedCategories]);
 
   const createListing = async () => {
     if (!selectedObject || !state.user) return;
@@ -407,6 +467,10 @@ const App: React.FC = () => {
       };
       const newId = `placed-${Date.now()}`;
       const spawnPos: [number, number, number] = [prev.roomSizeFeet / 2, 0.5, prev.roomSizeFeet / 2];
+      
+      // Track add to room action
+      trackMarketplaceAction('add_to_room', toolboxObj.id, toolboxObj.name, toolboxObj.type, toolboxObj.color);
+      
       return {
         ...prev,
         roomData: {
@@ -454,9 +518,33 @@ const App: React.FC = () => {
             <Box className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-black italic uppercase tracking-tighter leading-none">VoxelRoom</h1>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Architect Pro</span>
+            <h1 className="text-lg font-black italic uppercase tracking-tighter leading-none">MyRoom</h1>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">The World Is Yours</span>
           </div>
+        </div>
+
+        {/* Navigation Tabs */}
+        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
+          <button
+            onClick={() => setCurrentTab('room')}
+            className={`px-6 py-2 rounded-lg font-black uppercase text-[10px] transition-all ${
+              currentTab === 'room'
+                ? 'bg-indigo-600 text-white shadow-lg'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Room
+          </button>
+          <button
+            onClick={() => setCurrentTab('shop')}
+            className={`px-6 py-2 rounded-lg font-black uppercase text-[10px] transition-all ${
+              currentTab === 'shop'
+                ? 'bg-indigo-600 text-white shadow-lg'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Shop
+          </button>
         </div>
 
         <div className="flex items-center gap-4">
@@ -626,59 +714,221 @@ const App: React.FC = () => {
       )}
 
       <main className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar */}
-        <div className="w-80 border-r bg-white flex flex-col overflow-y-auto">
-          <div className="p-4 space-y-6">
-            <section>
-              <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Room Settings</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs text-slate-500 mb-1 block">Room Size (Feet)</label>
-                  <div className="flex items-center gap-2">
+        {/* Show Shop in full screen, or Room with sidebar */}
+        {currentTab === 'shop' ? (
+          // Full-screen Shop View
+          <div className="w-full flex flex-col bg-white">
+            {/* Shop Header with Filters */}
+            <div className="border-b bg-white p-6 space-y-4">
+              <h2 className="text-2xl font-black uppercase italic">Marketplace</h2>
+              
+              {/* Search Bar */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Search furniture..."
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={marketplaceSearch}
+                  onChange={(e) => setMarketplaceSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && searchMarketplace(marketplaceSearch)}
+                />
+                <button onClick={() => searchMarketplace(marketplaceSearch)} className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold"><Search className="w-4 h-4" /></button>
+              </div>
+
+              {/* Filter Controls */}
+              <div className="flex gap-6 flex-wrap items-end">
+                {/* Price Range Filter */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-slate-600 uppercase">Price Range</label>
+                  <div className="flex gap-2 items-center">
                     <input
-                      type="range"
-                      min="6"
-                      max="30"
-                      value={state.roomSizeFeet}
-                      onChange={(e) => setState(prev => ({ ...prev, roomSizeFeet: parseInt(e.target.value) }))}
-                      className="flex-1"
+                      type="number"
+                      placeholder="Min"
+                      min="0"
+                      value={priceRange.min}
+                      onChange={(e) => setPriceRange({...priceRange, min: parseInt(e.target.value) || 0})}
+                      className="w-20 px-2 py-1 border border-slate-200 rounded text-sm"
                     />
-                    <span className="text-sm font-medium w-8">{state.roomSizeFeet}'</span>
+                    <span className="text-slate-400">—</span>
+                    <input
+                      type="number"
+                      placeholder="Max"
+                      value={priceRange.max}
+                      onChange={(e) => setPriceRange({...priceRange, max: parseInt(e.target.value) || 10000})}
+                      className="w-20 px-2 py-1 border border-slate-200 rounded text-sm"
+                    />
                   </div>
                 </div>
+
+                {/* Category Filter */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-slate-600 uppercase">Category</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {['furniture', 'decor', 'lighting', 'structure'].map(cat => (
+                      <button
+                        key={cat}
+                        onClick={() => setSelectedCategories(prev => 
+                          prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
+                        )}
+                        className={`px-3 py-1 rounded-full text-xs font-bold uppercase border transition-all ${
+                          selectedCategories.includes(cat)
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-600'
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Recommendations Button */}
+                {state.user && (
+                  <button
+                    onClick={loadRecommendations}
+                    className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg text-xs font-bold uppercase flex items-center gap-2 transition-all"
+                  >
+                    <Sparkles className="w-4 h-4" /> Recommendations
+                  </button>
+                )}
               </div>
-            </section>
+            </div>
+
+            {/* Shop Grid */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {!state.user && (
+                <div className="p-4 bg-indigo-600/10 border border-indigo-500/20 rounded-2xl text-center mb-6">
+                  <p className="text-sm font-black uppercase text-indigo-600 mb-2">Login to create listings</p>
+                  <button onClick={() => setState(prev => ({ ...prev, showAuth: true }))} className="text-xs font-black uppercase bg-indigo-600 text-white px-4 py-2 rounded-lg">Sign In</button>
+                </div>
+              )}
+
+              {state.marketplaceItems.length === 0 ? (
+                <div className="text-center py-16 opacity-40">
+                  <ShoppingBag className="w-16 h-16 mx-auto mb-4" />
+                  <p className="text-lg font-black uppercase">No items found</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {state.marketplaceItems.map(item => (
+                    <div 
+                      key={item._id} 
+                      className="bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-lg transition-all group"
+                      onMouseEnter={() => trackMarketplaceAction('hover', item._id, item.name, item.type, item.color)}
+                      onClick={() => trackMarketplaceAction('view', item._id, item.name, item.type, item.color)}
+                    >
+                      <div className="aspect-square bg-slate-100 overflow-hidden relative border-b border-slate-200">
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform" alt={item.name} />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center opacity-40">
+                            <Box className="w-12 h-12 text-indigo-500" />
+                          </div>
+                        )}
+                        <div className="absolute top-3 right-3 bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-black">
+                          ${item.price}
+                        </div>
+                      </div>
+                      <div className="p-4 space-y-3">
+                        <div>
+                          <h4 className="font-black uppercase italic text-sm leading-tight">{item.name}</h4>
+                          <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{item.type}</span>
+                        </div>
+                        {item.description && <p className="text-xs text-slate-600 line-clamp-2">"{item.description}"</p>}
+                        <div className="flex gap-2 pt-2">
+                          <button
+                            onClick={() => placeFromToolbox(item.data)}
+                            className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold uppercase transition-all"
+                          >
+                            Add to Room
+                          </button>
+                          {state.user?.email === item.creator && (
+                            <button onClick={() => deleteListing(item._id!)} className="p-2 hover:bg-red-100 rounded-lg text-red-600 transition-colors">
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="pt-2 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-500">
+                          <div className="w-4 h-4 rounded-full bg-slate-300"></div>
+                          <span className="truncate">{item.creator}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          // Room View with Sidebar
+          <>
+            {/* Left Sidebar */}
+            <div className="w-80 border-r bg-white flex flex-col overflow-y-auto">
+          <div className="p-4 space-y-6">
+            {currentTab === 'room' && (
+              <section>
+                <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Room Settings</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Room Size (Feet)</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="range"
+                        min="6"
+                        max="30"
+                        value={state.roomSizeFeet}
+                        onChange={(e) => setState(prev => ({ ...prev, roomSizeFeet: parseInt(e.target.value) }))}
+                        className="flex-1"
+                      />
+                      <span className="text-sm font-medium w-8">{state.roomSizeFeet}'</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {currentTab === 'shop' && (
+              <section>
+                <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Shop</h3>
+                <p className="text-xs text-slate-500">Browse and personalize furniture recommendations</p>
+              </section>
+            )}
 
             <div className="flex-1 overflow-y-auto p-5 space-y-8 custom-scrollbar">
-              <div className="flex p-1 bg-slate-900 rounded-2xl border border-slate-800">
-                <button
-                  onClick={() => setState(prev => ({ ...prev, processingMode: 'room' }))}
-                  className={`flex-1 py-2 px-3 rounded-xl text-[10px] font-black uppercase transition-all ${state.processingMode === 'room' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                  Room
-                </button>
-                <button
-                  onClick={() => setState(prev => ({ ...prev, processingMode: 'object' }))}
-                  className={`flex-1 py-2 px-3 rounded-xl text-[10px] font-black uppercase transition-all ${state.processingMode === 'object' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                  Object
-                </button>
-                <button
-                  onClick={() => setState(prev => ({ ...prev, processingMode: 'chat' }))}
-                  className={`flex-1 py-2 px-3 rounded-xl text-[10px] font-black uppercase transition-all ${state.processingMode === 'chat' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                  Chat
-                </button>
-                <button
-                  onClick={() => setState(prev => ({ ...prev, processingMode: 'marketplace' }))}
-                  className={`flex-1 py-2 px-3 rounded-xl text-[10px] font-black uppercase transition-all ${state.processingMode === 'marketplace' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                  Shop
-                </button>
-              </div>
+              {currentTab === 'room' && (
+                <div className="flex p-1 bg-slate-900 rounded-2xl border border-slate-800">
+                  <button
+                    onClick={() => setState(prev => ({ ...prev, processingMode: 'room' }))}
+                    className={`flex-1 py-2 px-3 rounded-xl text-[10px] font-black uppercase transition-all ${state.processingMode === 'room' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                  >
+                    Design
+                  </button>
+                  <button
+                    onClick={() => setState(prev => ({ ...prev, processingMode: 'object' }))}
+                    className={`flex-1 py-2 px-3 rounded-xl text-[10px] font-black uppercase transition-all ${state.processingMode === 'object' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                  >
+                    Object
+                  </button>
+                  <button
+                    onClick={() => setState(prev => ({ ...prev, processingMode: 'chat' }))}
+                    className={`flex-1 py-2 px-3 rounded-xl text-[10px] font-black uppercase transition-all ${state.processingMode === 'chat' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                  >
+                    Chat
+                  </button>
+                </div>
+              )}
 
-              {state.processingMode === 'marketplace' && (
+              {currentTab === 'shop' && (
                 <section className="space-y-4">
+                  {state.user && (
+                    <button
+                      onClick={loadRecommendations}
+                      className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-600/20"
+                    >
+                      <Sparkles className="w-4 h-4" /> Personalized Recommendations
+                    </button>
+                  )}
+                  
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -706,7 +956,12 @@ const App: React.FC = () => {
                       </div>
                     )}
                     {state.marketplaceItems.map(item => (
-                      <div key={item._id} className="bg-slate-900 border border-slate-800 rounded-3xl p-4 group hover:border-indigo-500 transition-all">
+                      <div 
+                        key={item._id} 
+                        className="bg-slate-900 border border-slate-800 rounded-3xl p-4 group hover:border-indigo-500 transition-all"
+                        onMouseEnter={() => trackMarketplaceAction('hover', item._id, item.name, item.type, item.color)}
+                        onClick={() => trackMarketplaceAction('view', item._id, item.name, item.type, item.color)}
+                      >
                         <div className="aspect-square bg-slate-950 rounded-2xl mb-4 overflow-hidden relative border border-slate-800">
                           {item.imageUrl ? (
                             <img src={item.imageUrl} className="w-full h-full object-cover" alt={item.name} />
@@ -749,7 +1004,7 @@ const App: React.FC = () => {
                 </section>
               )}
 
-              {state.processingMode === 'chat' && (
+              {state.processingMode === 'chat' && currentTab === 'room' && (
                 <section className="flex flex-col h-[400px] space-y-4">
                   <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
                     {state.chatHistory.length === 0 && (
@@ -799,7 +1054,7 @@ const App: React.FC = () => {
                 </section>
               )}
 
-              {(state.processingMode === 'room' || state.processingMode === 'object') && !state.isProcessing && (
+              {(state.processingMode === 'room' || state.processingMode === 'object') && !state.isProcessing && currentTab === 'room' && (
                 <section className="space-y-4">
                   <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                     {state.processingMode === 'room' ? 'Capture Environment' : 'Capture Detail Item'}
@@ -846,7 +1101,7 @@ const App: React.FC = () => {
                 </section>
               )}
 
-              {state.isProcessing && (
+              {state.isProcessing && currentTab === 'room' && (
                 <div className="flex flex-col items-center justify-center h-48 text-center animate-pulse">
                   <RefreshCw className="w-12 h-12 text-indigo-500 animate-spin mb-4" />
                   <h3 className="text-xs font-black italic uppercase tracking-widest text-indigo-400">
@@ -855,46 +1110,48 @@ const App: React.FC = () => {
                 </div>
               )}
 
-              <section className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                    <Archive className="w-3 h-3" /> Toolbox
-                  </h2>
-                  <span className="text-[10px] font-black text-indigo-500">{(state.toolbox || []).length} Items</span>
-                </div>
+              {currentTab === 'room' && (
+                <section className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                      <Archive className="w-3 h-3" /> Cart
+                    </h2>
+                    <span className="text-[10px] font-black text-indigo-500">{(state.toolbox || []).length} Items</span>
+                  </div>
 
-                {selectedObject && state.user && (
-                  <button
-                    onClick={() => setState(prev => ({ ...prev, showListingCreator: true }))}
-                    className="w-full py-3 bg-slate-900 border border-slate-800 text-indigo-400 text-[10px] font-black uppercase rounded-xl flex items-center justify-center gap-2 hover:bg-slate-800 transition-all"
-                  >
-                    <PlusCircle className="w-4 h-4" /> Sell Selected Item
-                  </button>
-                )}
-
-                <div className="grid grid-cols-2 gap-3">
-                  {(state.toolbox || []).map((item) => (
+                  {selectedObject && state.user && (
                     <button
-                      key={item.id}
-                      onClick={() => placeFromToolbox(item)}
-                      className="group relative aspect-square bg-slate-900/60 border border-slate-800 rounded-2xl flex flex-col items-center justify-center p-3 hover:border-indigo-500 hover:bg-indigo-950/40 transition-all overflow-hidden"
+                      onClick={() => setState(prev => ({ ...prev, showListingCreator: true }))}
+                      className="w-full py-3 bg-slate-900 border border-slate-800 text-indigo-400 text-[10px] font-black uppercase rounded-xl flex items-center justify-center gap-2 hover:bg-slate-800 transition-all"
                     >
-                      <div className="w-10 h-10 rounded-lg mb-2 shadow-inner border border-white/5" style={{ backgroundColor: item.color }} />
-                      <span className="text-[9px] font-black uppercase text-slate-400 truncate w-full text-center px-1 tracking-tight">{item.name}</span>
-                      <div className="absolute inset-0 bg-indigo-600/90 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                        <PlusCircle className="w-6 h-6 text-white" />
-                      </div>
+                      <PlusCircle className="w-4 h-4" /> Sell Selected Item
                     </button>
-                  ))}
-                  {(state.toolbox || []).length === 0 && (
-                    <div className="col-span-2 py-8 border border-dashed border-slate-800 rounded-2xl text-center text-[10px] font-bold text-slate-600 italic">
-                      No assets found
-                    </div>
                   )}
-                </div>
-              </section>
 
-              {state.roomData && !state.isProcessing && (
+                  <div className="grid grid-cols-2 gap-3">
+                    {(state.toolbox || []).map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => placeFromToolbox(item)}
+                        className="group relative aspect-square bg-slate-900/60 border border-slate-800 rounded-2xl flex flex-col items-center justify-center p-3 hover:border-indigo-500 hover:bg-indigo-950/40 transition-all overflow-hidden"
+                      >
+                        <div className="w-10 h-10 rounded-lg mb-2 shadow-inner border border-white/5" style={{ backgroundColor: item.color }} />
+                        <span className="text-[9px] font-black uppercase text-slate-400 truncate w-full text-center px-1 tracking-tight">{item.name}</span>
+                        <div className="absolute inset-0 bg-indigo-600/90 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                          <PlusCircle className="w-6 h-6 text-white" />
+                        </div>
+                      </button>
+                    ))}
+                    {(state.toolbox || []).length === 0 && (
+                      <div className="col-span-2 py-8 border border-dashed border-slate-800 rounded-2xl text-center text-[10px] font-bold text-slate-600 italic">
+                        No items found
+                      </div>
+                    )}
+                  </div>
+                </section>
+              )}
+
+              {state.roomData && !state.isProcessing && currentTab === 'room' && (
                 <section className="space-y-4 pt-4 border-t border-slate-800/50">
                   <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Active Scene</h2>
                   <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
@@ -961,7 +1218,7 @@ const App: React.FC = () => {
                 <Box className="w-16 h-16 text-white" />
                </div>
                <h2 className="text-3xl font-black italic text-white uppercase tracking-tighter drop-shadow-lg text-center px-4 leading-tight">Ready to Build</h2>
-               <p className="text-white/60 font-bold uppercase tracking-widest text-[10px] mt-4">Snap a photo to generate voxel blocks</p>
+               <p className="text-white/60 font-bold uppercase tracking-widest text-[10px] mt-4">Snap a photo to generate your room</p>
             </div>
           )}
 
@@ -1022,7 +1279,7 @@ const App: React.FC = () => {
                     onClick={addToToolbox}
                     className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 transition-all"
                   >
-                    <PackagePlus className="w-4 h-4" /> Save Asset
+                    <PackagePlus className="w-4 h-4" /> Save Item
                   </button>
                   {state.user && (
                     <button
@@ -1049,6 +1306,8 @@ const App: React.FC = () => {
             </div>
           )}
         </div>
+          </>
+        )}
       </main>
     </div>
   );

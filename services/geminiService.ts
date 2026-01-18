@@ -3,6 +3,13 @@ import { RoomData, VoxelObject } from "../types";
 const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || '';
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
+// Debug: Check if API key is loaded
+if (!OPENROUTER_API_KEY) {
+  console.warn('⚠️ VITE_OPENROUTER_API_KEY is not set! Please check your .env file and restart the dev server.');
+} else {
+  console.log('✅ OpenRouter API Key loaded successfully');
+}
+
 const BASE_RULES = `
 The style must strictly match "Classic Detailed Voxel Art".
 Sub-parts MUST touch or overlap (structural integrity).

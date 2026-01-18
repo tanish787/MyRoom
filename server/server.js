@@ -51,6 +51,21 @@ const marketplaceItemSchema = new mongoose.Schema({
 
 const MarketplaceItem = mongoose.model('MarketplaceItem', marketplaceItemSchema);
 
+// User Analytics Schema - tracks user interactions with marketplace items
+const userAnalyticsSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  itemId: { type: mongoose.Schema.Types.ObjectId, ref: 'MarketplaceItem' },
+  itemName: { type: String },
+  itemType: { type: String },
+  itemColor: { type: String },
+  action: { type: String, enum: ['view', 'hover', 'scroll', 'add_to_room', 'remove_from_room', 'search'], required: true },
+  timeSpent: { type: Number, default: 0 }, // milliseconds for hover/view actions
+  timestamp: { type: Date, default: Date.now },
+  searchQuery: { type: String } // for search actions
+});
+
+const UserAnalytics = mongoose.model('UserAnalytics', userAnalyticsSchema);
+
 app.post('/register', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -137,8 +152,176 @@ app.get('/load-room/:userId', async (req, res) => {
   }
 });
 
-const PORT = 5001;
+// Track user analytics
+app.post('/analytics', async (req, res) => {
+  try {
+    const { userId, itemId, itemName, itemType, itemColor, action, timeSpent, searchQuery } = req.body;
+    
+    const analytics = new UserAnalytics({
+      userId,
+      itemId,
+      itemName,
+      itemType,
+      itemColor,
+      action,
+      timeSpent: timeSpent || 0,
+      searchQuery
+    });
+    
+    await analytics.save();
+    res.status(201).send({ message: 'Analytics recorded' });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+// Get personalized recommendations for a user
+app.get('/recommendations/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { limit = 5 } = req.query;
+
+    // Get all user analytics
+    const userAnalytics = await UserAnalytics.find({ userId }).lean();
+    
+    if (userAnalytics.length === 0) {
+      // Return top rated items if user has no history
+      const topItems = await MarketplaceItem.find().sort({ createdAt: -1 }).limit(parseInt(limit)).lean();
+      return res.send(topItems);
+    }
+
+    // Calculate item scores based on user behavior
+    const itemScores = new Map();
+    const userInteractions = new Map();
+
+    for (const record of userAnalytics) {
+      const itemId = record.itemId?.toString();
+      if (!itemId) continue;
+
+      if (!userInteractions.has(itemId)) {
+        userInteractions.set(itemId, {
+          type: record.itemType,
+          color: record.itemColor,
+          name: record.itemName,
+          views: 0,
+          hovers: 0,
+          scrolls: 0,
+          adds: 0,
+          removes: 0,
+          totalTimeSpent: 0
+        });
+      }
+
+      const interaction = userInteractions.get(itemId);
+      switch (record.action) {
+        case 'view':
+          interaction.views += 1;
+          interaction.totalTimeSpent += record.timeSpent || 0;
+          break;
+        case 'hover':
+          interaction.hovers += 2;
+          interaction.totalTimeSpent += record.timeSpent || 0;
+          break;
+        case 'scroll':
+          interaction.scrolls += 0.5;
+          break;
+        case 'add_to_room':
+          interaction.adds += 5;
+          break;
+        case 'remove_from_room':
+          interaction.removes -= 2;
+          break;
+      }
+    }
+
+    // Calculate item type and color preferences
+    const typePreferences = {};
+    const colorPreferences = {};
+
+    for (const [, interaction] of userInteractions) {
+      const score = interaction.views + interaction.hovers + interaction.scrolls + interaction.adds - interaction.removes + (interaction.totalTimeSpent / 1000);
+      
+      if (score > 0) {
+        typePreferences[interaction.type] = (typePreferences[interaction.type] || 0) + score;
+        colorPreferences[interaction.color] = (colorPreferences[interaction.color] || 0) + score;
+      }
+    }
+
+    // Find similar items from marketplace
+    const similarItems = await MarketplaceItem.find({
+      $or: [
+        { type: { $in: Object.keys(typePreferences).slice(0, 3) } },
+        { color: { $in: Object.keys(colorPreferences).slice(0, 3) } }
+      ]
+    }).lean();
+
+    // Score and sort items
+    const recommendations = similarItems
+      .filter(item => !userInteractions.has(item._id.toString())) // Exclude items user already interacted with
+      .map(item => ({
+        ...item,
+        recommendationScore: 
+          (typePreferences[item.type] || 0) * 0.6 + 
+          (colorPreferences[item.color] || 0) * 0.4
+      }))
+      .sort((a, b) => b.recommendationScore - a.recommendationScore)
+      .slice(0, parseInt(limit))
+      .map(({ recommendationScore, ...item }) => item); // Remove recommendation score from response
+
+    res.send(recommendations.length > 0 ? recommendations : similarItems.slice(0, parseInt(limit)));
+  } catch (err) {
+    console.error('Recommendations error:', err);
+    res.status(500).send(err.message);
+  }
+});
+
+// Get user's interaction history with items
+app.get('/analytics/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const analytics = await UserAnalytics.find({ userId })
+      .sort({ timestamp: -1 })
+      .limit(50);
+    res.send(analytics);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+
+const fetch = require('node-fetch'); // if not already installed: npm install node-fetch
+
+app.post('/api/openrouter', async (req, res) => {
+  try {
+    const { prompt } = req.body;
+
+    if (!prompt) return res.status(400).send({ error: "Prompt is required" });
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",   // keep your model
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+
+    const data = await response.json();
+    res.send(data);
+  } catch (err) {
+    console.error('OpenRouter Error:', err);
+    res.status(500).send({ error: err.message });
+  }
+});
+
+
+
+const PORT = process.env.PORT || 5001;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📍 Health check: http://localhost:${PORT}/health`);
+  console.log(`📊 Recommendations: http://localhost:${PORT}/recommendations/:userId`);
 });
