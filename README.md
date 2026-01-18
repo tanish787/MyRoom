@@ -160,7 +160,7 @@ Create a `.env` file in the `server/` directory:
 
 ```env
 # MongoDB Configuration
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database
+MONGODB_URI=your-MONGODB-ATLAS-key
 
 # Shopify Configuration
 SHOPIFY_STORE_NAME=your-store-name
