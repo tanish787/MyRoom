@@ -54,7 +54,7 @@ const App: React.FC = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [selectedAccountType, setSelectedAccountType] = useState<'buyer' | 'seller' | null>(null);
   const [marketplaceSearch, setMarketplaceSearch] = useState('');
-  const [currentTab, setCurrentTab] = useState<'room' | 'shop' | 'items' | 'analytics'>('room');
+  const [currentTab, setCurrentTab] = useState<'room' | 'shop' | 'create' | 'listings' | 'analytics'>('room');
   const [chatInput, setChatInput] = useState('');
   const [priceRange, setPriceRange] = useState({ min: 0, max: 10000 });
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -468,7 +468,7 @@ const App: React.FC = () => {
         
         // Set default tab based on account type
         if (data.accountType === 'seller') {
-          setCurrentTab('items');
+          setCurrentTab('create');
         } else {
           setCurrentTab('room');
         }
@@ -608,7 +608,7 @@ const App: React.FC = () => {
   }, [currentTab]);
 
   useEffect(() => {
-    if (currentTab === 'items' && state.user?.accountType === 'seller') {
+    if ((currentTab === 'create' || currentTab === 'listings') && state.user?.accountType === 'seller') {
       loadSellerItems();
     }
   }, [currentTab, state.user]);
@@ -1304,7 +1304,7 @@ const App: React.FC = () => {
           </div>
           <div>
             <h1 className="text-lg font-black italic uppercase tracking-tighter leading-none">MyRoom</h1>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">The World Is Yours</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">The Space Is Yours</span>
           </div>
         </div>
 
@@ -1313,14 +1313,24 @@ const App: React.FC = () => {
           {state.user?.accountType === 'seller' ? (
             <>
               <button
-                onClick={() => setCurrentTab('items')}
+                onClick={() => setCurrentTab('create')}
                 className={`px-6 py-2 rounded-lg font-black uppercase text-[10px] transition-all ${
-                  currentTab === 'items'
+                  currentTab === 'create'
                     ? 'bg-indigo-600 text-white shadow-lg'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Items
+                Make a Listing
+              </button>
+              <button
+                onClick={() => setCurrentTab('listings')}
+                className={`px-6 py-2 rounded-lg font-black uppercase text-[10px] transition-all ${
+                  currentTab === 'listings'
+                    ? 'bg-indigo-600 text-white shadow-lg'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Current Listings
               </button>
               <button
                 onClick={() => setCurrentTab('analytics')}
@@ -1943,16 +1953,16 @@ const App: React.FC = () => {
       )}
 
       <main className="flex-1 flex overflow-hidden">
-        {/* Seller Items Page */}
-        {currentTab === 'items' && state.user?.accountType === 'seller' ? (
+        {/* Seller Make a Listing Page */}
+        {currentTab === 'create' && state.user?.accountType === 'seller' ? (
           <div className="w-full flex flex-col bg-white">
-            {/* Items Header */}
+            {/* Make a Listing Header */}
             <div className="border-b bg-white p-6 space-y-4">
-              <h2 className="text-2xl font-black uppercase italic">My Items</h2>
-              <p className="text-sm text-slate-600">Create, manage, and list your items for sale</p>
+              <h2 className="text-2xl font-black uppercase italic">Make a Listing</h2>
+              <p className="text-sm text-slate-600">Create and customize your items for sale</p>
             </div>
 
-            {/* Items Layout: Add Item | Room View | Items List */}
+            {/* Items Layout: Add Item | Room View (no posted items list) */}
             <div className="flex-1 flex overflow-hidden gap-6 p-6">
               {/* Left Panel: Add Item Form */}
               <div className="w-64 border border-slate-200 rounded-2xl p-4 flex flex-col gap-4 overflow-y-auto">
@@ -2170,47 +2180,157 @@ const App: React.FC = () => {
                   <Sparkles className="w-4 h-4" /> Save Item to Marketplace
                 </button>
               </div>
+            </div>
+          </div>
+        ) : currentTab === 'listings' && state.user?.accountType === 'seller' ? (
+          // Current Listings Page
+          <div className="w-full flex flex-col bg-white">
+            {/* Current Listings Header */}
+            <div className="border-b bg-white p-6 space-y-4">
+              <h2 className="text-2xl font-black uppercase italic">Current Listings</h2>
+              <p className="text-sm text-slate-600">View and manage all your listed items</p>
+            </div>
 
-              {/* Right Panel: Items List */}
-              <div className="w-64 border border-slate-200 rounded-2xl p-4 flex flex-col gap-4 overflow-y-auto">
-                <h3 className="font-black uppercase text-sm">Posted Items ({sellerItems.length})</h3>
+            {/* Listings Layout: Left panel with cards | Right panel with room editor */}
+            <div className="flex-1 flex overflow-hidden gap-6 p-6">
+              {/* Left Panel: Listings List */}
+              <div className="w-72 border border-slate-200 rounded-2xl p-4 flex flex-col gap-4 overflow-y-auto">
+                <h3 className="font-black uppercase text-sm">Your Items ({sellerItems.length})</h3>
                 
                 {sellerItems.length === 0 ? (
                   <div className="text-center py-8 opacity-40">
                     <PackagePlus className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                    <p className="text-xs font-semibold text-slate-600">No items yet</p>
+                    <p className="text-xs font-semibold text-slate-600">No listings yet</p>
+                    <p className="text-[10px] text-slate-500 mt-2">Go to "Make a Listing" to create your first item</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {sellerItems.map((item) => (
-                      <div key={item._id} className="p-3 border border-slate-200 rounded-lg hover:shadow-md transition-all group">
+                      <button
+                        key={item._id}
+                        onClick={() => {
+                          setCurrentSellerItem(item);
+                          setSellerSelectedObjectId(item.data?.id || null);
+                        }}
+                        className={`w-full text-left p-3 border rounded-lg transition-all hover:shadow-md ${
+                          currentSellerItem?._id === item._id
+                            ? 'border-indigo-600 bg-indigo-50'
+                            : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
                         {item.imageUrl && (
                           <img src={item.imageUrl} className="w-full h-20 object-cover rounded-lg mb-2" />
                         )}
                         <h4 className="font-bold text-xs text-slate-900 line-clamp-1">{item.name}</h4>
                         <p className="text-xs text-slate-600 mb-2">${item.price}</p>
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => {
-                              setCurrentSellerItem(item);
-                              setSellerSelectedObjectId(item.data?.id || null);
-                            }}
-                            className="flex-1 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[10px] font-bold uppercase transition-all"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => deleteSellerItem(item._id!)}
-                            className="px-2 py-1 hover:bg-red-100 rounded text-red-600 transition-colors"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
+                        <p className="text-[10px] text-slate-500 capitalize">{item.type} • {item.style}</p>
+                      </button>
                     ))}
                   </div>
                 )}
               </div>
+
+              {/* Right Panel: Room Editor with Single Item */}
+              {currentSellerItem && sellerItems.length > 0 ? (
+                <div className="flex-1 flex flex-col gap-4">
+                  {/* Room Preview */}
+                  <div className="flex-1 border border-slate-200 rounded-2xl overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100 relative">
+                    {state.roomData && currentSellerItem?.data ? (
+                      <VoxelScene 
+                        roomData={{...state.roomData, objects: [currentSellerItem.data]}}
+                        selectedObjectId={sellerSelectedObjectId || currentSellerItem.data.id}
+                        selectedPartIndex={sellerSelectedPartIndex}
+                        onSelectObject={(id, partIndex) => {
+                          setSellerSelectedObjectId(id);
+                          setSellerSelectedPartIndex(partIndex === undefined ? null : partIndex);
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
+                        <ImageIcon className="w-12 h-12 mb-2 opacity-50" />
+                        <p className="text-sm font-semibold">3D Preview</p>
+                      </div>
+                    )}
+
+                    {/* Object Editor Panel - Floating Overlay */}
+                    {sellerSelectedObjectId && currentSellerItem?.data && (
+                      <div className="absolute bottom-8 left-8 w-64 bg-slate-900/90 backdrop-blur-2xl rounded-xl shadow-2xl p-4 border border-slate-700/50 text-white animate-in slide-in-from-left-4 z-20">
+                        <div className="flex items-center justify-between mb-3 gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-8 h-8 rounded-lg shadow-inner border border-white/10 flex-shrink-0" style={{ backgroundColor: currentSellerItem.data.color }}></div>
+                            <div className="min-w-0 flex-1">
+                              <h4 className="font-black text-xs uppercase italic leading-tight truncate">{currentSellerItem.data.name}</h4>
+                              <span className="text-[7px] font-bold text-indigo-400 uppercase tracking-widest block truncate">{currentSellerItem.data.type}</span>
+                            </div>
+                          </div>
+                          <button onClick={() => setSellerSelectedObjectId(null)} className="p-0.5 hover:bg-slate-800 rounded flex-shrink-0">
+                            <X className="w-3.5 h-3.5 text-slate-500" />
+                          </button>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-3 gap-0.5 text-[7px] font-bold uppercase text-indigo-400/60">
+                            <div className="bg-slate-950/50 p-1 rounded flex items-center justify-center whitespace-nowrap"><Move className="w-2 h-2 mr-0.5" />Arrows</div>
+                            <div className="bg-slate-950/50 p-1 rounded flex items-center justify-center whitespace-nowrap">Q/E</div>
+                            <div className="bg-slate-950/50 p-1 rounded flex items-center justify-center whitespace-nowrap"><RotateCw className="w-2 h-2 mr-0.5" />R</div>
+                          </div>
+
+                          {/* Components / Parts Editor */}
+                          <div className="space-y-1">
+                            <h5 className="text-[7px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-0.5">
+                              <Shapes className="w-2.5 h-2.5" /> Parts
+                            </h5>
+                            <div className="grid grid-cols-1 gap-0.5 max-h-20 overflow-y-auto pr-1 custom-scrollbar">
+                              {(currentSellerItem.data.parts || []).map((part: any, idx: number) => (
+                                <button
+                                  key={idx}
+                                  onClick={() => setSellerSelectedPartIndex(sellerSelectedPartIndex === idx ? null : idx)}
+                                  className={`flex items-center gap-1.5 p-1 rounded border text-[7px] transition-all truncate ${
+                                    sellerSelectedPartIndex === idx
+                                      ? 'bg-indigo-600/20 border-indigo-500 text-white'
+                                      : 'bg-slate-950/30 border-slate-800 text-slate-400 hover:border-slate-700'
+                                  }`}
+                                >
+                                  <div className="w-2.5 h-2.5 rounded shadow-inner flex-shrink-0" style={{ backgroundColor: part.color || currentSellerItem.data.color }}></div>
+                                  <span className="font-bold uppercase flex-1 truncate">P{idx + 1}</span>
+                                  {sellerSelectedPartIndex === idx && <div className="w-1 h-1 rounded-full bg-indigo-500 animate-pulse flex-shrink-0"></div>}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setCurrentSellerItem(currentSellerItem);
+                        setSellerSelectedObjectId(currentSellerItem.data?.id || null);
+                        setCurrentTab('create');
+                      }}
+                      className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black uppercase text-sm transition-all flex items-center justify-center gap-2"
+                    >
+                      <Edit3 className="w-4 h-4" /> Edit Item
+                    </button>
+                    <button
+                      onClick={() => {
+                        deleteSellerItem(currentSellerItem._id!);
+                        setCurrentSellerItem(null);
+                        setSellerSelectedObjectId(null);
+                      }}
+                      className="px-4 py-3 hover:bg-red-100 rounded-xl text-red-600 font-black uppercase text-sm transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
+                  <Box className="w-16 h-16 mb-4 opacity-50" />
+                  <p className="text-lg font-semibold">Select an item to view</p>
+                </div>
+              )}
             </div>
           </div>
         ) : currentTab === 'analytics' && state.user?.accountType === 'seller' ? (
@@ -2288,6 +2408,7 @@ const App: React.FC = () => {
                           </div>
                         </div>
                       </div>
+
                     ))}
                   </div>
                 )}
