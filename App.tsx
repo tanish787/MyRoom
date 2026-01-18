@@ -62,6 +62,21 @@ const App: React.FC = () => {
   });
 
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+  
+  // Checkout state
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [checkoutItem, setCheckoutItem] = useState<any>(null);
+  const [checkoutForm, setCheckoutForm] = useState({
+    quantity: 1,
+    cardNumber: '',
+    cardName: '',
+    expiryDate: '',
+    cvv: ''
+  });
+
+  // Design preferences state
+  const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
 
   // Analytics tracking functions
   const trackMarketplaceAction = async (action: 'view' | 'hover' | 'scroll' | 'add_to_room' | 'remove_from_room' | 'search', itemId?: string, itemName?: string, itemType?: string, itemColor?: string, timeSpent?: number, searchQuery?: string) => {
@@ -107,7 +122,7 @@ const App: React.FC = () => {
       if (!state.selectedObjectId || !state.roomData) return;
       if (['input', 'textarea'].includes((e.target as HTMLElement).tagName.toLowerCase())) return;
 
-      const MOVE_STEP = 0.5;
+      const MOVE_STEP = 0.1;
       const PART_MOVE_STEP = 0.1;
 
       setState(prev => {
@@ -159,6 +174,28 @@ const App: React.FC = () => {
   const handleChat = async () => {
     if (!chatInput.trim() || !state.roomData || state.isProcessing) return;
 
+    // Build enhanced prompt with style and color preferences
+    let enhancedPrompt = chatInput;
+    if (selectedStyle || selectedColors.length > 0) {
+      let preferences = [];
+      if (selectedStyle) preferences.push(`${selectedStyle} style`);
+      if (selectedColors.length > 0) {
+        const colorNames = selectedColors.map(color => {
+          const colorMap: { [key: string]: string } = {
+            '#94a3b8': 'neutral',
+            '#d97706': 'warm/amber',
+            '#0891b2': 'cool/cyan',
+            '#16a34a': 'green',
+            '#a855f7': 'purple',
+            '#ec4899': 'rose'
+          };
+          return colorMap[color] || color;
+        });
+        preferences.push(`using ${colorNames.join(', ')} colors`);
+      }
+      enhancedPrompt = `${chatInput}. Please design the room in ${preferences.join(' and ')} style.`;
+    }
+
     const userMessage: ChatMessage = { role: 'user', content: chatInput };
     setState(prev => ({
       ...prev,
@@ -169,7 +206,7 @@ const App: React.FC = () => {
     setChatInput('');
 
     try {
-      const result = await autoDecorate(state.roomData, chatInput);
+      const result = await autoDecorate(state.roomData, enhancedPrompt);
 
       const assistantMessage: ChatMessage = {
         role: 'assistant',
@@ -411,6 +448,52 @@ const App: React.FC = () => {
     }
   };
 
+  const openCheckout = (item: any) => {
+    setCheckoutItem(item);
+    setCheckoutForm({
+      quantity: 1,
+      cardNumber: '',
+      cardName: '',
+      expiryDate: '',
+      cvv: ''
+    });
+    setShowCheckout(true);
+  };
+
+  const handleCheckoutChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setCheckoutForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleQuantityChange = (change: number) => {
+    const newQuantity = checkoutForm.quantity + change;
+    if (newQuantity > 0) {
+      setCheckoutForm(prev => ({ ...prev, quantity: newQuantity }));
+    }
+  };
+
+  const processPayment = async () => {
+    if (!checkoutForm.cardNumber || !checkoutForm.cardName || !checkoutForm.expiryDate || !checkoutForm.cvv) {
+      alert('Please fill in all payment details');
+      return;
+    }
+
+    if (checkoutForm.cardNumber.replace(/\s/g, '').length !== 16) {
+      alert('Card number must be 16 digits');
+      return;
+    }
+
+    if (checkoutForm.cvv.length !== 3) {
+      alert('CVV must be 3 digits');
+      return;
+    }
+
+    // Simulate payment processing
+    alert(`✅ Payment successful! Purchased ${checkoutForm.quantity}x ${checkoutItem.name} for $${(parseFloat(checkoutItem.price) * checkoutForm.quantity).toFixed(2)}`);
+    setShowCheckout(false);
+    setCheckoutItem(null);
+  };
+
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -459,7 +542,7 @@ const App: React.FC = () => {
 
         setState(prev => ({
           ...prev,
-          toolbox: [...(prev.toolbox || []), object],
+          toolbox: [...(prev.toolbox || []), { ...object, isUserCreated: true }],
           isProcessing: false,
           image: null
         }));
@@ -493,11 +576,14 @@ const App: React.FC = () => {
       // Track add to room action
       trackMarketplaceAction('add_to_room', toolboxObj.id, toolboxObj.name, toolboxObj.type, toolboxObj.color);
       
+      // Mark as from shop (not user-created) - user can only sell items they create themselves
+      const newObject = { ...toolboxObj, id: newId, position: spawnPos, isUserCreated: false };
+      
       return {
         ...prev,
         roomData: {
           ...baseRoom,
-          objects: [...(baseRoom.objects || []), { ...toolboxObj, id: newId, position: spawnPos }]
+          objects: [...(baseRoom.objects || []), newObject]
         },
         selectedObjectId: newId,
         processingMode: 'room'
@@ -625,6 +711,135 @@ const App: React.FC = () => {
               >
                 {isRegistering ? 'Already have an account? Login' : 'New here? Create account'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCheckout && checkoutItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md">
+          <div className="w-[450px] bg-white rounded-[2.5rem] p-10 shadow-2xl border border-slate-100 animate-in zoom-in-95">
+            <div className="flex justify-between items-center mb-8">
+              <div className="flex items-center gap-4">
+                <div className="bg-green-600 p-2.5 rounded-2xl">
+                  <ShoppingBag className="w-6 h-6 text-white" />
+                </div>
+                <h2 className="text-2xl font-black uppercase italic tracking-tight">Checkout</h2>
+              </div>
+              <button onClick={() => setShowCheckout(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                <X className="w-6 h-6 text-slate-300 hover:text-slate-900" />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Order Summary */}
+              <div className="bg-slate-50 rounded-2xl p-4 space-y-3">
+                <h3 className="font-black uppercase text-sm text-slate-900">Order Summary</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">{checkoutItem.name}</span>
+                    <span className="font-bold text-slate-900">${checkoutItem.price}</span>
+                  </div>
+                </div>
+                
+                {/* Quantity Selector */}
+                <div className="pt-3 border-t border-slate-200">
+                  <label className="text-xs font-black uppercase text-slate-600 mb-2 block">Quantity</label>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => handleQuantityChange(-1)} className="p-2 bg-slate-200 hover:bg-slate-300 rounded-lg font-bold text-slate-900">−</button>
+                    <input 
+                      type="number" 
+                      value={checkoutForm.quantity} 
+                      readOnly
+                      className="flex-1 text-center font-black text-lg bg-white border border-slate-200 rounded-lg p-2"
+                    />
+                    <button onClick={() => handleQuantityChange(1)} className="p-2 bg-slate-200 hover:bg-slate-300 rounded-lg font-bold text-slate-900">+</button>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-slate-200 flex justify-between font-black text-lg">
+                  <span className="text-slate-900">Total:</span>
+                  <span className="text-green-600">${(parseFloat(checkoutItem.price) * checkoutForm.quantity).toFixed(2)}</span>
+                </div>
+              </div>
+
+              {/* Payment Information */}
+              <div className="space-y-4">
+                <h3 className="font-black uppercase text-sm text-slate-900">Payment Information</h3>
+                
+                <input 
+                  type="text" 
+                  name="cardName"
+                  placeholder="Cardholder Name"
+                  value={checkoutForm.cardName}
+                  onChange={handleCheckoutChange}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-500"
+                />
+
+                <input 
+                  type="text" 
+                  name="cardNumber"
+                  placeholder="Card Number (16 digits)"
+                  value={checkoutForm.cardNumber}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\s/g, '');
+                    if (val.length <= 16 && /^\d*$/.test(val)) {
+                      const formatted = val.match(/.{1,4}/g)?.join(' ') || '';
+                      handleCheckoutChange({ target: { name: 'cardNumber', value: formatted } } as any);
+                    }
+                  }}
+                  maxLength={19}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-500 font-mono"
+                />
+
+                <div className="flex gap-3">
+                  <input 
+                    type="text" 
+                    name="expiryDate"
+                    placeholder="MM/YY"
+                    value={checkoutForm.expiryDate}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      if (val.length <= 4) {
+                        const formatted = val.length >= 2 ? `${val.slice(0, 2)}/${val.slice(2)}` : val;
+                        handleCheckoutChange({ target: { name: 'expiryDate', value: formatted } } as any);
+                      }
+                    }}
+                    maxLength={5}
+                    className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-500 font-mono"
+                  />
+                  <input 
+                    type="text" 
+                    name="cvv"
+                    placeholder="CVV"
+                    value={checkoutForm.cvv}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      if (val.length <= 3) {
+                        handleCheckoutChange({ target: { name: 'cvv', value: val } } as any);
+                      }
+                    }}
+                    maxLength={3}
+                    className="w-24 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button 
+                  onClick={() => setShowCheckout(false)}
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-xl font-black uppercase transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={processPayment}
+                  className="flex-1 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-black uppercase transition-all shadow-lg shadow-green-600/20"
+                >
+                  Complete Purchase
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -887,6 +1102,12 @@ const App: React.FC = () => {
                           >
                             Add to Room
                           </button>
+                          <button
+                            onClick={() => openCheckout(item)}
+                            className="flex-1 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs font-bold uppercase transition-all"
+                          >
+                            Buy
+                          </button>
                           {state.user?.email === item.creator && (
                             <button onClick={() => deleteListing(item._id!)} className="p-2 hover:bg-red-100 rounded-lg text-red-600 transition-colors">
                               <X className="w-4 h-4" />
@@ -1031,12 +1252,20 @@ const App: React.FC = () => {
                           )}
                         </div>
                         {item.description && <p className="text-[10px] text-slate-400 italic mb-4 line-clamp-2">"{item.description}"</p>}
-                        <button
-                          onClick={() => placeFromToolbox(item.data)}
-                          className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-600/20"
-                        >
-                          <PlusCircle className="w-4 h-4" /> Add to Room
-                        </button>
+                        <div className="flex gap-2 mb-3">
+                          <button
+                            onClick={() => placeFromToolbox(item.data)}
+                            className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-600/20"
+                          >
+                            <PlusCircle className="w-4 h-4" /> Add to Room
+                          </button>
+                          <button
+                            onClick={() => openCheckout(item)}
+                            className="flex-1 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 transition-all shadow-lg shadow-green-600/20"
+                          >
+                            <ShoppingBag className="w-4 h-4" /> Buy
+                          </button>
+                        </div>
                         <div className="mt-3 pt-3 border-t border-slate-800/50 flex items-center gap-2">
                            <div className="w-4 h-4 rounded-full bg-slate-800 flex items-center justify-center">
                              <UserIcon className="w-2.5 h-2.5 text-slate-500" />
@@ -1051,6 +1280,59 @@ const App: React.FC = () => {
 
               {state.processingMode === 'chat' && currentTab === 'room' && (
                 <section className="flex flex-col h-[400px] space-y-4">
+                  {/* Style Categories */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase text-slate-600">Room Style</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {['Modern', 'Gothic', 'Minimalist', 'Rustic', 'Luxury', 'Bohemian'].map(style => (
+                        <button
+                          key={style}
+                          onClick={() => setSelectedStyle(style)}
+                          className={`py-2 px-2 rounded-lg text-[9px] font-black uppercase transition-all ${
+                            selectedStyle === style
+                              ? 'bg-indigo-600 text-white shadow-lg'
+                              : 'bg-slate-900 border border-slate-800 text-slate-400 hover:border-indigo-500'
+                          }`}
+                        >
+                          {style}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Color Palette */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase text-slate-600">Color Scheme</label>
+                    <div className="grid grid-cols-6 gap-2">
+                      {[
+                        { name: 'Neutral', color: '#94a3b8' },
+                        { name: 'Warm', color: '#d97706' },
+                        { name: 'Cool', color: '#0891b2' },
+                        { name: 'Green', color: '#16a34a' },
+                        { name: 'Purple', color: '#a855f7' },
+                        { name: 'Rose', color: '#ec4899' }
+                      ].map(({ name, color }) => (
+                        <button
+                          key={name}
+                          onClick={() => {
+                            setSelectedColors(prev =>
+                              prev.includes(color)
+                                ? prev.filter(c => c !== color)
+                                : [...prev, color]
+                            );
+                          }}
+                          className={`w-full aspect-square rounded-lg transition-all border-2 ${
+                            selectedColors.includes(color)
+                              ? 'border-white shadow-lg scale-105'
+                              : 'border-transparent hover:border-white/50'
+                          }`}
+                          style={{ backgroundColor: color }}
+                          title={name}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
                     {state.chatHistory.length === 0 && (
                       <div className="text-center py-8 opacity-40">
@@ -1165,12 +1447,18 @@ const App: React.FC = () => {
                   </div>
 
                   {selectedObject && state.user && (
-                    <button
-                      onClick={() => setState(prev => ({ ...prev, showListingCreator: true }))}
-                      className="w-full py-3 bg-slate-900 border border-slate-800 text-indigo-400 text-[10px] font-black uppercase rounded-xl flex items-center justify-center gap-2 hover:bg-slate-800 transition-all"
-                    >
-                      <PlusCircle className="w-4 h-4" /> Sell Selected Item
-                    </button>
+                    selectedObject.isUserCreated !== false ? (
+                      <button
+                        onClick={() => setState(prev => ({ ...prev, showListingCreator: true }))}
+                        className="w-full py-3 bg-slate-900 border border-slate-800 text-indigo-400 text-[10px] font-black uppercase rounded-xl flex items-center justify-center gap-2 hover:bg-slate-800 transition-all"
+                      >
+                        <PlusCircle className="w-4 h-4" /> Sell Selected Item
+                      </button>
+                    ) : (
+                      <div className="w-full py-3 bg-red-600/20 border border-red-500/30 text-red-400 text-[10px] font-black uppercase rounded-xl flex items-center justify-center gap-2">
+                        <X className="w-4 h-4" /> Can't sell items from shop
+                      </div>
+                    )
                   )}
 
                   <div className="grid grid-cols-2 gap-3">
@@ -1327,12 +1615,21 @@ const App: React.FC = () => {
                     <PackagePlus className="w-4 h-4" /> Save Item
                   </button>
                   {state.user && (
-                    <button
-                      onClick={() => setState(prev => ({ ...prev, showListingCreator: true }))}
-                      className="flex-1 py-3 bg-slate-900 border border-slate-800 text-indigo-400 text-[10px] font-black uppercase rounded-xl flex items-center justify-center gap-2 hover:bg-slate-800 transition-all"
-                    >
-                      <ShoppingBag className="w-4 h-4" /> Sell
-                    </button>
+                    selectedObject.isUserCreated !== false ? (
+                      <button
+                        onClick={() => setState(prev => ({ ...prev, showListingCreator: true }))}
+                        className="flex-1 py-3 bg-slate-900 border border-slate-800 text-indigo-400 text-[10px] font-black uppercase rounded-xl flex items-center justify-center gap-2 hover:bg-slate-800 transition-all"
+                      >
+                        <ShoppingBag className="w-4 h-4" /> Sell
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        className="flex-1 py-3 bg-red-600/20 border border-red-500/30 text-red-400 text-[10px] font-black uppercase rounded-xl flex items-center justify-center gap-2 cursor-not-allowed"
+                      >
+                        <X className="w-4 h-4" /> Can't sell
+                      </button>
+                    )
                   )}
                   <button
                     onClick={() => {

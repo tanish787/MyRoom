@@ -14,6 +14,7 @@ export interface VoxelObject {
   color: string;
   description: string;
   visible?: boolean;
+  isUserCreated?: boolean; // true if created by user, false if from shop
 }
 
 export interface RoomData {
