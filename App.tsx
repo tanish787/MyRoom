@@ -68,7 +68,7 @@ const App: React.FC = () => {
     if (!state.user) return;
     
     try {
-      await fetch('http://localhost:5001/analytics', {
+      await fetch('http://localhost:5000/analytics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -91,7 +91,7 @@ const App: React.FC = () => {
     if (!state.user) return;
     
     try {
-      const res = await fetch(`http://localhost:5001/recommendations/${state.user.userId}?limit=5`);
+      const res = await fetch(`http://localhost:5000/recommendations/${state.user.userId}?limit=5`);
       const data = await res.json();
       if (res.ok && data.length > 0) {
         // Store recommendations in state
@@ -225,8 +225,8 @@ const App: React.FC = () => {
   const handleAuth = async () => {
     const endpoint = isRegistering ? 'register' : 'login';
     try {
-      console.log(`Attempting ${endpoint} at http://localhost:5001/${endpoint}`);
-      const res = await fetch(`http://localhost:5001/${endpoint}`, {
+      console.log(`Attempting ${endpoint} at http://localhost:5000/${endpoint}`);
+      const res = await fetch(`http://localhost:5000/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(authInput)
@@ -259,7 +259,7 @@ const App: React.FC = () => {
     }
 
     try {
-      const res = await fetch('http://localhost:5001/save-room', {
+      const res = await fetch('http://localhost:5000/save-room', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -284,7 +284,7 @@ const App: React.FC = () => {
     if (!userId) return;
 
     try {
-      const res = await fetch(`http://localhost:5001/load-room/${userId}`);
+      const res = await fetch(`http://localhost:5000/load-room/${userId}`);
       if (res.ok) {
         const data = await res.json();
         if (data) {
@@ -303,7 +303,7 @@ const App: React.FC = () => {
   const searchMarketplace = async (query?: string) => {
     const s = query !== undefined ? query : marketplaceSearch;
     try {
-      const res = await fetch(`http://localhost:5001/marketplace?search=${s}`);
+      const res = await fetch(`http://localhost:5000/marketplace?search=${s}`);
       let data = await res.json();
       if (res.ok) {
         // Apply filters
@@ -351,7 +351,7 @@ const App: React.FC = () => {
   const createListing = async () => {
     if (!selectedObject || !state.user) return;
     try {
-      const res = await fetch('http://localhost:5001/marketplace', {
+      const res = await fetch('http://localhost:5000/marketplace', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -376,7 +376,7 @@ const App: React.FC = () => {
     if (!state.user) return;
     if (!confirm('Are you sure you want to delete this listing?')) return;
     try {
-      const res = await fetch(`http://localhost:5001/marketplace/${id}`, {
+      const res = await fetch(`http://localhost:5000/marketplace/${id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: state.user.email })
