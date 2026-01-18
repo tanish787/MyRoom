@@ -1151,16 +1151,18 @@ const App: React.FC = () => {
     }
   };
 
-  const placeFromToolbox = (toolboxObj: VoxelObject, marketplaceItem?: any) => {
+  const placeFromToolbox = async (toolboxObj: VoxelObject, marketplaceItem?: any) => {
     const newId = `placed-${Date.now()}`;
+    const spawnPos: [number, number, number] = [state.roomSizeFeet / 2, 0.5, state.roomSizeFeet / 2];
     
     // DEBUG: Log marketplace item details
     if (marketplaceItem) {
       console.log('🛍️ Placing item from marketplace:', {
         name: marketplaceItem.name,
+        source: marketplaceItem.source,
         hasImageUrl: !!marketplaceItem.imageUrl,
         imageUrlLength: marketplaceItem.imageUrl?.length || 0,
-        imageUrlPreview: marketplaceItem.imageUrl?.substring(0, 100) || 'NONE'
+        imageUrlPreview: marketplaceItem.imageUrl?.substring(0, 50) || 'NONE'
       });
     }
     
@@ -1171,6 +1173,36 @@ const App: React.FC = () => {
         alert('✋ This item is already in your room! You can only add each item once.');
         console.log('⚠️ Duplicate item blocked:', marketplaceItem._id);
         return;
+      }
+    }
+    
+    // 🎨 Generate 3D model from Shopify product image
+    let finalToolboxObj = toolboxObj;
+    if (marketplaceItem?.source === 'shopify' && marketplaceItem?.imageUrl) {
+      try {
+        console.log('🎨 Generating 3D model for Shopify product:', marketplaceItem.name);
+        setState(prev => ({ ...prev, isProcessing: true, processingMode: 'object' }));
+        
+        const { analyzeSingleObject } = await import('./services/geminiService');
+        const generatedObject = await analyzeSingleObject(marketplaceItem.imageUrl, spawnPos);
+        
+        // Merge Shopify item info with generated 3D data
+        finalToolboxObj = {
+          ...generatedObject,
+          id: newId,
+          name: marketplaceItem.name,
+          color: generatedObject.color || marketplaceItem.color,
+          description: marketplaceItem.description || generatedObject.description,
+          isUserCreated: false
+        };
+        
+        console.log('✅ Generated 3D model for Shopify item:', finalToolboxObj);
+        setState(prev => ({ ...prev, isProcessing: false }));
+      } catch (error) {
+        console.error('❌ Failed to generate 3D model for Shopify item:', error);
+        // Fall back to generic 3D data if generation fails
+        setState(prev => ({ ...prev, isProcessing: false }));
+        finalToolboxObj = toolboxObj;
       }
     }
     
@@ -1219,7 +1251,7 @@ const App: React.FC = () => {
       }
       
       // Mark as from shop (not user-created) - user can only sell items they create themselves
-      const newObject = { ...toolboxObj, id: newId, position: spawnPos, isUserCreated: false };
+      const newObject = { ...finalToolboxObj, id: newId, position: spawnPos, isUserCreated: false };
       
       return {
         ...prev,
@@ -2723,9 +2755,18 @@ const App: React.FC = () => {
                           {!roomItems.some(ri => ri._id === item._id) && (
                             <button
                               onClick={() => placeFromToolbox(item.data, item)}
-                              className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-600/20"
+                              disabled={state.isProcessing}
+                              className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-white rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-600/20"
                             >
-                              <PlusCircle className="w-4 h-4" /> Add to Room
+                              {state.isProcessing && state.processingMode === 'object' ? (
+                                <>
+                                  <span className="animate-spin">⚙️</span> Generating 3D...
+                                </>
+                              ) : (
+                                <>
+                                  <PlusCircle className="w-4 h-4" /> Add to Room
+                                </>
+                              )}
                             </button>
                           )}
                           <button
