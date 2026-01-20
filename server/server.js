@@ -242,6 +242,28 @@ app.post('/update-account', async (req, res) => {
   }
 });
 
+// Get user info (including Shopify link)
+app.get('/user-info/:email', async (req, res) => {
+  try {
+    const email = decodeURIComponent(req.params.email);
+    const user = await User.findOne({ email }).lean();
+    
+    if (!user) {
+      return res.status(404).send({ message: 'User not found' });
+    }
+    
+    res.send({
+      email: user.email,
+      name: user.name,
+      accountType: user.accountType,
+      shopifyLink: user.shopifyLink || ''
+    });
+  } catch (err) {
+    console.error('Get user info error:', err);
+    res.status(500).send({ message: 'Error fetching user info: ' + err.message });
+  }
+});
+
 // Save user's cart items to their account
 app.post('/user-cart', async (req, res) => {
   try {
@@ -320,6 +342,40 @@ app.get('/marketplace', async (req, res) => {
     });
     res.send(items);
   } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+// Get seller's current listings (both user-created and Shopify products)
+app.get('/seller/listings/:sellerEmail', async (req, res) => {
+  try {
+    const sellerEmail = decodeURIComponent(req.params.sellerEmail);
+    
+    // Get user to find their Shopify link
+    const user = await User.findOne({ email: sellerEmail }).lean();
+    const shopifyStoreName = user?.shopifyLink || null;
+    
+    // Build query to get both user-created items and linked Shopify products
+    let query = { creator: sellerEmail };
+    if (shopifyStoreName) {
+      query = {
+        $or: [
+          { creator: sellerEmail },
+          { creator: shopifyStoreName }
+        ]
+      };
+    }
+    
+    const listings = await MarketplaceItem.find(query).sort({ createdAt: -1 }).lean();
+    
+    console.log(`📋 [GET /seller/listings] Returned ${listings.length} listings for ${sellerEmail}`);
+    if (shopifyStoreName) {
+      console.log(`   Including Shopify store: ${shopifyStoreName}`);
+    }
+    
+    res.send(listings);
+  } catch (err) {
+    console.error('❌ Error fetching seller listings:', err.message);
     res.status(500).send(err.message);
   }
 });
@@ -640,6 +696,39 @@ app.post('/track-purchase', async (req, res) => {
   }
 });
 
+// Set Shopify store link for seller
+app.post('/seller/link-shopify', async (req, res) => {
+  try {
+    const { sellerEmail, shopifyStoreName } = req.body;
+    
+    if (!sellerEmail || !shopifyStoreName) {
+      return res.status(400).send('Missing sellerEmail or shopifyStoreName');
+    }
+    
+    // Extract store name from URL if provided (e.g., "myroomryan.myshopify.com" -> "myroomryan")
+    let storeName = shopifyStoreName;
+    if (shopifyStoreName.includes('.myshopify.com')) {
+      storeName = shopifyStoreName.split('.')[0];
+    }
+    
+    const user = await User.findOneAndUpdate(
+      { email: sellerEmail },
+      { shopifyLink: storeName },
+      { new: true }
+    );
+    
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+    
+    console.log(`✅ Linked Shopify store "${storeName}" to seller: ${sellerEmail}`);
+    res.send({ message: 'Shopify store linked successfully', shopifyLink: storeName });
+  } catch (err) {
+    console.error('❌ Error linking Shopify store:', err.message);
+    res.status(500).send(err.message);
+  }
+});
+
 // Get seller analytics (earnings, views, hover time)
 app.get('/seller-analytics/:sellerEmail', async (req, res) => {
   try {
@@ -657,10 +746,20 @@ app.get('/seller-analytics/:sellerEmail', async (req, res) => {
     const totalEarnings = purchases.reduce((sum, p) => sum + parseFloat(p.totalAmount), 0).toFixed(2);
     console.log(`✓ Total Earnings: $${totalEarnings}`);
     
-    // Get all analytics for items created by this seller
-    const sellerItems = await MarketplaceItem.find({ creator: sellerEmail }).lean();
+    // Get user by email to find their Shopify link
+    const user = await User.findOne({ email: sellerEmail }).lean();
+    const shopifyStoreName = user?.shopifyLink || null;
+    
+    // Get all analytics for items created by this seller OR from their linked Shopify store
+    const query = { creator: sellerEmail };
+    if (shopifyStoreName) {
+      query.$or = [{ creator: sellerEmail }, { creator: shopifyStoreName }];
+      delete query.creator;
+    }
+    
+    const sellerItems = await MarketplaceItem.find(query).lean();
     const sellerItemIds = sellerItems.map(item => item._id);
-    console.log(`✓ Found ${sellerItems.length} items created by seller`);
+    console.log(`✓ Found ${sellerItems.length} items created by seller (including ${shopifyStoreName ? 'Shopify' : 'no'} products)`);
     if (sellerItemIds.length > 0) {
       sellerItems.forEach(item => console.log(`  - ${item.name} (ID: ${item._id})`));
     }

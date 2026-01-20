@@ -853,13 +853,13 @@ const App: React.FC = () => {
   const loadSellerItems = async () => {
     if (!state.user) return;
     try {
-      // Filter marketplace items to show only items created by this seller
-      const res = await fetch(`http://localhost:5000/marketplace`);
+      // Fetch both user-created and Shopify products from /seller/listings endpoint
+      const encodedEmail = encodeURIComponent(state.user.email);
+      const res = await fetch(`http://localhost:5000/seller/listings/${encodedEmail}`);
       if (res.ok) {
         const allItems = await res.json();
-        const myItems = allItems.filter((item: any) => item.creator === state.user?.email);
-        setSellerItems(myItems);
-        console.log(`📦 Loaded ${myItems.length} items for seller ${state.user.email}`);
+        setSellerItems(allItems);
+        console.log(`📦 Loaded ${allItems.length} items for seller ${state.user.email} (includes Shopify products)`);
       }
     } catch (err) {
       console.error('Error loading seller items:', err);
@@ -1048,8 +1048,8 @@ const App: React.FC = () => {
       return;
     }
 
-    if (!accountForm.name.trim() && !accountForm.newPassword) {
-      setAccountMessage('Please enter a name or new password');
+    if (!accountForm.name.trim() && !accountForm.newPassword && !accountForm.shopifyLink.trim()) {
+      setAccountMessage('Please enter at least one field to update');
       setAccountMessageType('error');
       return;
     }
@@ -1062,7 +1062,8 @@ const App: React.FC = () => {
           email: state.user.email,
           name: accountForm.name || undefined,
           currentPassword: accountForm.currentPassword || undefined,
-          newPassword: accountForm.newPassword || undefined
+          newPassword: accountForm.newPassword || undefined,
+          shopifyLink: accountForm.shopifyLink || undefined
         })
       });
 
@@ -1464,7 +1465,27 @@ const App: React.FC = () => {
                 </span>
               </div>
               <button
-                onClick={() => setShowAccountModal(true)}
+                onClick={async () => {
+                  // Load current account data including Shopify link BEFORE opening modal
+                  if (state.user?.email) {
+                    try {
+                      const res = await fetch(`http://localhost:5000/user-info/${encodeURIComponent(state.user.email)}`);
+                      if (res.ok) {
+                        const data = await res.json();
+                        console.log('📋 Loaded user info:', data);
+                        setAccountForm(prev => ({ 
+                          ...prev, 
+                          shopifyLink: data.shopifyLink || '',
+                          name: data.name || ''
+                        }));
+                      }
+                    } catch (err) {
+                      console.log('Could not load current account data:', err);
+                    }
+                  }
+                  // Now open modal after data is loaded
+                  setShowAccountModal(true);
+                }}
                 className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-indigo-600 transition-colors"
                 title="Account settings"
               >
